@@ -42,7 +42,7 @@ make run
 
 To run the unit tests, you can run:
 ```bash
-make test
+make ptest
 ```
 
 To acesss a project wide ghci, you can run:
