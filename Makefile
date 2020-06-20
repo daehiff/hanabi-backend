@@ -4,7 +4,7 @@ run:
 				--command "stack ghci" \
 				--test "DevMain.update"
 ptest: 
-		stack test
+		source .tenv && stack test
 
 ghci: 
 		stack exec ghci

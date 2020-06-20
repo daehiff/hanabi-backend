@@ -28,7 +28,8 @@ dependencies:
   - bson # serialize documents
   - aeson # JSON Parsing
   - pwstore-purehaskell # For hashing passwords in out database
-  - hspec
+  - hspec               # testing lib
+  - hspec-wai
 
 library:
   source-dirs:

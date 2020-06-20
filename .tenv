@@ -1,0 +1,4 @@
+export DB_ADDR="127.0.0.1"
+export DB_NAME="test"
+export DB_PW=""
+export DB_UNAME=""
