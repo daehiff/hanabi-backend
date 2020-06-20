@@ -1,4 +1,4 @@
-name:                Spock-example
+name:                Hanabi-Backend 
 version:             0.1.0.0
 github:              "githubuser/Spock-example"
 license:             BSD3
@@ -43,7 +43,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - Spock-example
+    - Hanabi-Backend
 
 tests:
   Spock-example-test:
@@ -54,4 +54,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - Spock-example
+    - Hanabi-Backend
