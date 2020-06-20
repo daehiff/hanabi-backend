@@ -29,7 +29,7 @@ import           Foreign.Store                  ( Store(..)
                                                 , withStore
                                                 )
 import           GHC.Word                       ( Word32 )
-import           Main                           ( runApp )
+import           Init                           ( runApp )
 
 update :: IO ()
 update = do

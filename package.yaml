@@ -19,31 +19,36 @@ extra-source-files:
 description:         Please see the README on GitHub at <https://github.com/githubuser/Spock-example#readme>
 
 dependencies:
-- base >= 4.7 && < 5
-- Spock >= 0.11         # API routing + deps
-- mtl                   
-- text                  
-- foreign-store             
-- mongoDB               # Database Access
-- bson                  # serialize documents
-- aeson                 # JSON Parsing
-- pwstore-purehaskell   # For hashing passwords in out database
+  - base >= 4.7 && < 5
+  - Spock >= 0.11         # API routing + deps
+  - mtl                   
+  - text                  
+  - foreign-store             
+  - mongoDB               # Database Access
+  - bson                  # serialize documents
+  - aeson                 # JSON Parsing
+  - pwstore-purehaskell   # For hashing passwords in out database
+
 
 library:
-  source-dirs: src
-
+  source-dirs: 
+    - src
+    - src/routes
+    
 executables:
-  Spock-example-exe:
+  Hanabi-Backend-exe:
     main:                Main.hs
     source-dirs:         
     - app
-    - app/routes
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -fwarn-unused-imports
     dependencies:
     - Hanabi-Backend
+
+
 
 tests:
   Spock-example-test:
