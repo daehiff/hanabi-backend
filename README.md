@@ -13,9 +13,9 @@ To pull the MongoDB Container, run:
 docker pull mongo:4.0.4
 ```
 To run it:
-```
-docker run -d -p 27017-27019:27017-27019 -n mongodb mongo:4.0.4
 ```bash
+docker run -d -p 27017-27019:27017-27019 -n mongodb mongo:4.0.4
+```
 In case you are using vsc, there is a fancy docker extension which allows you to restart and manage your containers
 (https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-docker)
 
