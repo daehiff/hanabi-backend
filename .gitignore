@@ -1,0 +1,6 @@
+.stack-work/
+*~
+.env
+*.cabal
+*.yaml.lock
+.stack-work
