@@ -38,7 +38,6 @@ executables:
     source-dirs:         
     - app
     - app/routes
-    - app/handler
     ghc-options:
     - -threaded
     - -rtsopts
