@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE DataKinds     #-}
 
 module Init where
 
@@ -13,13 +14,17 @@ import           Data.IORef
 
 import qualified Data.Text                     as T
 
-import           Users                          ( userRoute )
 import           Model
 
+import           Data.HVect
+import           Database.MongoDB
+import           System.Environment             ( getEnv )
+import           Hooks                          ( initHook, authHook, updateJWTHook )
 
 
 data MySession = EmptySession
 data MyAppState = DummyAppState (IORef Int)
+
 
 
 
@@ -29,15 +34,18 @@ runApp = do
   spockCfg <- defaultSpockCfg () PCNoDatabase ()
   runSpock 8080 (spock spockCfg app)
 
-app :: SpockM () () () ()
+
+--app::SpockCtxM ctx SqlBackend SessionVal BlogState ()
 app = do
-  get root $ do
-    file (T.pack "") "./static/landingPage.html"
-  get "cards" $ do
-    allCards <- liftIO ((findObjects [] []) :: IO ([Maybe Card]))
-    json allCards
-  get ("card" <//> var) $ cardHandler
-  userRoute
+  prehook initHook $ do
+    get root $ do
+      file (T.pack "") "./static/landingPage.html"
+    prehook authHook $ prehook updateJWTHook $ do
+      get ("card" <//> var) $ cardHandler
+      get "cards" $ do
+      allCards <- liftIO ((findObjects [] []) :: IO ([Maybe Card]))
+      json allCards
+    
 
 
 cardHandler :: MonadIO m => String -> ActionCtxT ctx m b
@@ -45,5 +53,3 @@ cardHandler id = do
   card <- liftIO ((findById id) :: IO (Maybe Card))
   json card
 
-
--- $> findObjects [] [] :: IO [Maybe Card]

@@ -45,7 +45,6 @@ extra-deps:
   - persistent-template-2.8.2.3
   - persistent-mongoDB-2.10.0.0
   - AesonBson-0.4.0
-  - bytestring-0.10.10.0
   - pwstore-purehaskell-2.1.4
 # - acme-missiles-0.3
 # - git: https://github.com/commercialhaskell/stack.git

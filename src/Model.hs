@@ -10,7 +10,7 @@ import           Data.Aeson                     ( ToJSON
 import           Database.MongoDB
 import           GHC.Generics
 import qualified Data.Text                     as T
-import           System.Environment
+import           System.Environment             ( getEnv )
 
 
 
@@ -178,8 +178,9 @@ instance MongoObject Card where
 
   insertId id card = card { cid = Just (show id) }
 
-data User = User {uid:: Maybe String, name::String, gameId:: String, handCards::[Card], hints::[(Either Color Int, Int)]}
-              deriving(Show, Generic, Eq)
+
+
+data User = User {uid::Maybe String,username::String, email::String, password_hash::String ,sessions::[String]} deriving (Show, Generic, Eq)
 
 instance ToJSON User
 
@@ -187,46 +188,39 @@ instance FromJSON User
 
 instance Val User where
   val user = case uid user of
-    Nothing ->
-      (Doc
-        [ "name" := val (name user)
-        , "gameId" := val (gameId user)
-        , "handCards" := val (handCards user)
-        , "hints" := val (hints user)
-        ]
-      )
     (Just id) ->
       (Doc
         [ "_id" := val (ObjId (read id))
-        , "name" := val (name user)
-        , "gameId" := val (gameId user)
-        , "handCards" := val (handCards user)
-        , "hints" := val (hints user)
+        , "username" := val (username user)
+        , "password_h" := val (password_hash user)
+        , "email" := val (email user)
+        , "sessions" := val (sessions user)
+        ]
+      )
+    Nothing ->
+      (Doc
+        [ "username" := val (username user)
+        , "password_h" := val (password_hash user)
+        , "email" := val (email user)
+        , "sessions" := val (sessions user)
         ]
       )
 
   cast' (Doc bson) = do
     let (Just id) = ((bson !? "_id") :: Maybe ObjectId)
     let _id       = Just (show id)
-    name      <- (bson !? "name")
-    gameId    <- (bson !? "gameId")
-    handCards <- (bson !? "handCards")
-    hints     <- (bson !? "hints")
-    User <$> (Just _id) <*> name <*> gameId <*> handCards <*> hints
-  cast' _ = Nothing
+    let username  = (bson !? "username")
+    let password  = (bson !? "password_h")
+    let email     = (bson !? "email")
+    let sessions  = (bson !? "sessions")
+    User <$> (Just _id) <*> username <*> email <*> password <*> sessions
 
 instance MongoObject User where
-  collection _ = "users"
-
   insertId id user = user { uid = Just (show id) }
 
-data GameStatus = Status {cards::[Card], chips:: Int, lives::Int, stacks:: [(Color, Maybe Card)], player::[User]}
-              deriving(Show, Eq, Generic)
+  collection _ = "users"
 
-instance ToJSON GameStatus
 
-instance FromJSON GameStatus
+-- > insertObject User{uid=Nothing, username="daehiff", password_hash="asdsfdgh", email="winderl13@gmail.com", sessions=["sdfgh"]}
 
-data Game = Game {gid:: Int, userIds:: [Int], userWhiteList::[Int], public:: Bool, running:: Bool, status:: GameStatus}
-              deriving(Show, Eq, Generic)
-
+-- > (findObject ["email" := val "winderl13@gmail.com"]) :: IO (Maybe User)

@@ -24,17 +24,21 @@ dependencies:
   - mtl
   - text
   - foreign-store
+  - jose # jwt
+  - jose-jwt
+  - hvect
   - mongoDB # Database Access
   - bson # serialize documents
   - aeson # JSON Parsing
   - pwstore-purehaskell # For hashing passwords in out database
   - hspec               # testing lib
   - hspec-wai
+  - bytestring
+  - time
 
 library:
   source-dirs:
     - src
-    - src/routes
 
 executables:
   Hanabi-Backend-exe:
@@ -45,7 +49,7 @@ executables:
       - -threaded
       - -rtsopts
       - -with-rtsopts=-N
-      - -fwarn-unused-imports
+      #- -fwarn-unused-imports
     dependencies:
       - Hanabi-Backend
 
