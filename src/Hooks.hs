@@ -42,8 +42,14 @@ import           Data.ByteString.Internal       ( ByteString )
 import           Responses                      ( errorJson
                                                 , authError
                                                 )
-
-data SAP = SAP { user::User,sessionid::String,ttl::Integer} deriving(Show, Eq, Generic)
+{-
+SAP Stands for Session Authentication Payload
+All Data that is required by the user to send via JWT Token:
+  userData
+  currentSessionID
+  ttl of the JWT
+-}
+data SAP = SAP { user::User, sessionid::String, ttl::Integer} deriving(Show, Eq, Generic)
 
 instance ToJSON SAP where
 
@@ -110,7 +116,7 @@ authHook = do
     validationProcess :: ByteString -> IO (Either String SAP)
     validationProcess rawPayload = do
       let (Just payload) = (decode (fromStrict rawPayload)) :: Maybe SAP
-      now <- (round . (* 1000)) <$> getPOSIXTime
+      now <- _getNow
       let userTtl   = ttl payload
       let tokenUser = user payload
       if (validTTL now userTtl)
