@@ -4,11 +4,10 @@
 
 module Model where
 
-import           Data.Aeson                     ( ToJSON ()
-                                                , FromJSON (parseJSON)
-                                                
+import           Data.Aeson                     ( ToJSON()
+                                                , FromJSON(parseJSON)
                                                 )
-import           Data.Aeson.Types         hiding (String)      
+import           Data.Aeson.Types        hiding ( String )
 import           Database.MongoDB
 import           GHC.Generics
 import qualified Data.Text                     as T
@@ -30,7 +29,7 @@ instance (Val a, Val b) => Val (Either a b) where
 instance (Val a, Val b) => Val (a, b) where
   val (a, b) = val [val a, val b]
   cast' (Database.MongoDB.Array (x : y : [])) = (,) <$> cast' x <*> cast' y
-  cast' _                    = Nothing
+  cast' _ = Nothing
 
 
 run act = do
@@ -184,21 +183,27 @@ instance MongoObject Card where
 
 data User = User {uid::Maybe String,username::String, email::String, password_hash:: Maybe String ,sessions::[String]} deriving (Show, Generic, Eq)
 
-instance ToJSON User where 
-  toJSON user = object ["uid" .= uid user, "username" .= (username user), "email" .= email user, "sessions" .=  (toJSON (sessions user))]
+instance ToJSON User where
+  toJSON user = object
+    [ "uid" .= uid user
+    , "username" .= (username user)
+    , "email" .= email user
+    , "sessions" .= (toJSON (sessions user))
+    ]
 
 
--- $> encode User{uid=(Just "sdfg"), username="sacdsfd", email="asdsf", password_hash= (Just "df"), sessions=[]}
-
-
--- > eitherDecode "{\"email\":\"asdsf\",\"uid\":\"sdfg\",\"username\":\"sacdsfd\",\"sessions\":["asdf"]}" :: Either String User
-instance FromJSON User where 
+instance FromJSON User where
   parseJSON (Object v) = do
-                          uid <-  v .: "uid"
-                          username <-  v .: "username"
-                          email <-  v .: "email"
-                          sessions <- v .: "sessions"
-                          return User{uid=uid, username=username, email=email, password_hash=Nothing, sessions=sessions}
+    uid      <- v .: "uid"
+    username <- v .: "username"
+    email    <- v .: "email"
+    sessions <- v .: "sessions"
+    return User { uid           = uid
+                , username      = username
+                , email         = email
+                , password_hash = Nothing
+                , sessions      = sessions
+                }
 instance Val User where
   val user = case uid user of
     (Just id) ->
@@ -234,6 +239,26 @@ instance MongoObject User where
   collection _ = "users"
 
 
--- > insertObject User{uid=Nothing, username="daehiff", password_hash="asdsfdgh", email="winderl13@gmail.com", sessions=["sdfgh"]}
+data Session = Session {sid:: Maybe String, sessionUser::String} deriving (Show, Generic, Eq)
+instance ToJSON Session
+instance FromJSON Session
 
--- > (findObject ["email" := val "winderl13@gmail.com"]) :: IO (Maybe User)
+instance Val Session where
+  val session = case sid session of
+    Nothing    -> (Doc ["user" := val (sessionUser session)])
+    (Just _id) -> (Doc ["_id" := val _id, "user" := val (sessionUser session)])
+
+  cast' (Doc bson) = do
+    let (Just id) = ((bson !? "_id") :: Maybe ObjectId)
+    let _id       = Just (show id)
+    user <- (bson !? "user")
+    return Session { sid = _id, sessionUser = user }
+
+instance MongoObject Session where
+  collection _ = "sessions"
+
+  insertId id session = session { sid = Just (show id) } 
+
+
+
+-- > insertObject Session{sid=Nothing, sessionUser="sadsfg"}

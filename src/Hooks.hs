@@ -65,6 +65,8 @@ Base Hook returns HNil for initalisation
 initHook :: ActionCtxT () (WebStateM () () ()) (HVect '[])
 initHook = return HNil
 
+
+
 {-
 Update the JWT Token after response After (!) auth hook. (TODO can we combine both hooks?)
 General Approach:
@@ -86,11 +88,12 @@ updateJWTHook = do
   jwt <- liftIO $ sessionToJWT payload
   setHeader "auth" jwt
   return oldCtx
- where
-  sessionToJWT :: SAP -> IO T.Text
-  sessionToJWT payload = do
-    let (Right jwt) = hmacEncode HS384 "test" (toStrict (encode payload))
-    return (T.pack (show (unJwt jwt)))
+ 
+ 
+sessionToJWT :: SAP -> IO T.Text
+sessionToJWT payload = do
+  let (Right jwt) = hmacEncode HS384 "test" (toStrict (encode payload))
+  return (T.pack (show (unJwt jwt)))
 
 {-
 Auth hook that checks the users JWT

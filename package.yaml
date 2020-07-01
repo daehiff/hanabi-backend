@@ -36,6 +36,7 @@ dependencies:
   - bytestring
   - time
   - bcrypt
+  - lens
 
 library:
   source-dirs:
