@@ -4,9 +4,11 @@
 
 module Model where
 
-import           Data.Aeson                     ( ToJSON
-                                                , FromJSON
+import           Data.Aeson                     ( ToJSON ()
+                                                , FromJSON (parseJSON)
+                                                
                                                 )
+import           Data.Aeson.Types         hiding (String)      
 import           Database.MongoDB
 import           GHC.Generics
 import qualified Data.Text                     as T
@@ -17,7 +19,7 @@ import           System.Environment             ( getEnv )
 instance (Val a, Val b) => Val (Either a b) where
   val (Left  a) = val (True, a)
   val (Right a) = val (False, a)
-  cast' (Array (x : y : [])) =
+  cast' (Database.MongoDB.Array (x : y : [])) =
     let (Just x_) = cast' x
     in  if x_
           then let (Just y_) = (cast' y) in Just (Left y_)
@@ -27,7 +29,7 @@ instance (Val a, Val b) => Val (Either a b) where
 
 instance (Val a, Val b) => Val (a, b) where
   val (a, b) = val [val a, val b]
-  cast' (Array (x : y : [])) = (,) <$> cast' x <*> cast' y
+  cast' (Database.MongoDB.Array (x : y : [])) = (,) <$> cast' x <*> cast' y
   cast' _                    = Nothing
 
 
@@ -180,12 +182,23 @@ instance MongoObject Card where
 
 
 
-data User = User {uid::Maybe String,username::String, email::String, password_hash::String ,sessions::[String]} deriving (Show, Generic, Eq)
+data User = User {uid::Maybe String,username::String, email::String, password_hash:: Maybe String ,sessions::[String]} deriving (Show, Generic, Eq)
 
-instance ToJSON User
+instance ToJSON User where 
+  toJSON user = object ["uid" .= uid user, "username" .= (username user), "email" .= email user, "sessions" .=  (toJSON (sessions user))]
 
-instance FromJSON User
 
+-- $> encode User{uid=(Just "sdfg"), username="sacdsfd", email="asdsf", password_hash= (Just "df"), sessions=[]}
+
+
+-- > eitherDecode "{\"email\":\"asdsf\",\"uid\":\"sdfg\",\"username\":\"sacdsfd\",\"sessions\":["asdf"]}" :: Either String User
+instance FromJSON User where 
+  parseJSON (Object v) = do
+                          uid <-  v .: "uid"
+                          username <-  v .: "username"
+                          email <-  v .: "email"
+                          sessions <- v .: "sessions"
+                          return User{uid=uid, username=username, email=email, password_hash=Nothing, sessions=sessions}
 instance Val User where
   val user = case uid user of
     (Just id) ->

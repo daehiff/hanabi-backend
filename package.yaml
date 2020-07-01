@@ -35,10 +35,12 @@ dependencies:
   - hspec-wai
   - bytestring
   - time
+  - bcrypt
 
 library:
   source-dirs:
     - src
+    - src/handler
 
 executables:
   Hanabi-Backend-exe:

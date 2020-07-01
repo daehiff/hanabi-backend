@@ -1,4 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE DeriveGeneric     #-}
@@ -19,8 +18,11 @@ import           Model
 import           Data.HVect
 import           Database.MongoDB
 import           System.Environment             ( getEnv )
-import           Hooks                          ( initHook, authHook, updateJWTHook )
-
+import           Hooks                          ( initHook
+                                                , authHook
+                                                , updateJWTHook
+                                                )
+import           AuthHandler                    ( loginHandler )
 
 data MySession = EmptySession
 data MyAppState = DummyAppState (IORef Int)
@@ -40,12 +42,13 @@ app = do
   prehook initHook $ do
     get root $ do
       file (T.pack "") "./static/landingPage.html"
+    post "/auth/login" $ loginHandler
     prehook authHook $ prehook updateJWTHook $ do
       get ("card" <//> var) $ cardHandler
       get "cards" $ do
-      allCards <- liftIO ((findObjects [] []) :: IO ([Maybe Card]))
-      json allCards
-    
+        allCards <- liftIO ((findObjects [] []) :: IO ([Maybe Card]))
+        json allCards
+
 
 
 cardHandler :: MonadIO m => String -> ActionCtxT ctx m b

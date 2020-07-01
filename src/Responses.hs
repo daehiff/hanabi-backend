@@ -21,3 +21,6 @@ sucessJson code message = object
 
 authError :: Int
 authError = 1
+
+loginError :: Int
+loginError = 2

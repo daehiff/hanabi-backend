@@ -83,12 +83,12 @@ updateJWTHook = do
   now <- liftIO _getNow
   let newTTL  = now + 15 * 60 * 1000 -- new TTL 15 mins
   let payload = oldPayload { ttl = newTTL }
-  jwt <- liftIO $ _sessionToJWT payload
+  jwt <- liftIO $ sessionToJWT payload
   setHeader "auth" jwt
   return oldCtx
  where
-  _sessionToJWT :: SAP -> IO T.Text
-  _sessionToJWT payload = do
+  sessionToJWT :: SAP -> IO T.Text
+  sessionToJWT payload = do
     let (Right jwt) = hmacEncode HS384 "test" (toStrict (encode payload))
     return (T.pack (show (unJwt jwt)))
 
@@ -98,39 +98,58 @@ Auth hook that checks the users JWT
 authHook
   :: ActionCtxT (HVect xs) (WebStateM conn p st) (HVect (User ': SAP ': xs))
 authHook = do
-  oldCtx   <- getContext
-  jwt      <- (header "auth")
-  mPayload <- liftIO $ _validateSession jwt
-  case mPayload of
+  oldCtx             <- getContext
+  jwt                <- (header "auth")
+  rawPayload         <- liftIO $ getRawPayload jwt
+  unValidatedPayload <- liftIO $ convertPayloadToSAP rawPayload
+  ePayload           <- liftIO $ validatePayload unValidatedPayload
+  case ePayload of
     (Left  errorMsg) -> json $ errorJson authError errorMsg
     (Right payload ) -> return (user payload :&: payload :&: oldCtx)
  where
-  _validateSession :: Maybe T.Text -> IO (Either String SAP)
-  _validateSession Nothing    = return (Left "Header: auth is missing")
-  _validateSession (Just jwt) = do
+  getRawPayload :: Maybe T.Text -> IO (Either String ByteString)
+  getRawPayload Nothing    = return (Left "Header: `auth` is missing")
+  getRawPayload (Just jwt) = do
     let eitherDecoded = hmacDecode "test" (encodeUtf8 jwt)
     case eitherDecoded of
-      (Left error) -> return (Left ("Malformatted JWT: " ++ show error))
-      (Right (_, rawPayload)) -> validationProcess rawPayload
-   where
-    validationProcess :: ByteString -> IO (Either String SAP)
-    validationProcess rawPayload = do
-      let (Just payload) = (decode (fromStrict rawPayload)) :: Maybe SAP
-      now <- _getNow
-      let userTtl   = ttl payload
-      let tokenUser = user payload
-      if (validTTL now userTtl)
-        then fetchUser payload
-        else return (Right (payload))
+      (Left  error       ) -> return (Left "Unable to parse JWT.")
+      (Right (_, payload)) -> return (Right payload)
 
-    validTTL :: Integer -> Integer -> Bool
-    validTTL now ttl = (now - ttl) < 0
+  convertPayloadToSAP :: Either String ByteString -> IO (Either String SAP)
+  convertPayloadToSAP (Left  error     ) = return (Left error)
+  convertPayloadToSAP (Right rawPayload) = do
+    let payload = (decode (fromStrict rawPayload)) :: Maybe SAP
+    case payload of
+      Nothing -> return (Left "Error Parsing Payload, try to login again")
+      (Just payload) -> return (Right payload)
 
-    fetchUser :: SAP -> IO (Either String SAP)
-    fetchUser payload = do
-      let (Just userId) = (uid $ user payload)
-      (Just dataBaseUser) <- findById userId :: IO (Maybe User)
-      let payload = payload { user = dataBaseUser }
-      if (sessionid payload) `elem` (sessions dataBaseUser)
-        then return (Right payload)
-        else return (Left "Session Expired, please login.")
+  validatePayload :: Either String SAP -> IO (Either String SAP)
+  validatePayload (Left  error  ) = return (Left error)
+  validatePayload (Right payload) = do
+    now <- _getNow
+    let userTtl   = ttl payload
+    let tokenUser = user payload
+    if (isValidTTL now userTtl)
+      then return (Right payload)
+      else
+        (\_ -> do
+            let (Just userId) = (uid $ user payload)
+            mUser <- findById userId :: IO (Maybe User)
+            if mUser == Nothing
+              then return (Left "Could not verify user, please login again.")
+              else
+                (\_ -> do
+                    let (Just user) = mUser
+                    let newPayload  = payload { user = user }
+                    if (sessionid newPayload) `elem` (sessions user)
+                      then return (Right newPayload)
+                      else return (Left "Session Expired, please login again.")
+                  )
+                  undefined
+          )
+          undefined
+
+  isValidTTL :: Integer -> Integer -> Bool
+  isValidTTL now ttl = (now - ttl) < 0
+
+
