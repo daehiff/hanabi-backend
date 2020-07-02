@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveAnyClass #-}
 
 module Model where
 
@@ -23,7 +24,7 @@ import qualified BSONExtention                 as BSE
 import           ModelUtils                     ( MongoObject(..) )
 
 data Color = Red | Blue | White | Yellow | Green | Rainbow
-            deriving(Generic, Show, Eq )
+            deriving(Generic, Show, Eq , ToJSON, FromJSON, ToBSON, FromBSON)
 
 map_color_string :: Color -> String
 map_color_string Red     = "Red"
@@ -41,30 +42,24 @@ map_string_color ("Green"  ) = Just Green
 map_string_color ("Rainbow") = Just Rainbow
 map_string_color _           = Nothing
 
-instance ToJSON Color
-instance FromJSON Color
 
 instance Val Color where
   val color = val (map_color_string color)
   cast' (String color) = map_string_color color
   cast' _              = Nothing
 
-data Card = Card {cid::Maybe String, color::Color, number::Int}
-              deriving(Generic, Show, Eq)
+data Card = Card {cid::ObjectKey , color::Color, number::Int}
 
-instance ToJSON Card
-instance FromJSON Card
-
-instance ToBSON Card
-instance FromBSON Card
+              deriving(Generic, Show, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
 
 instance MongoObject Card where
   collection _ = "cards"
 
-  insertId id card = card { cid = Just (show id) }
+  insertId id card = card { cid = BSE.Key (show id) }
 
 
-data User = User {uid::ObjectKey,username::String, email::String, password_hash:: Maybe String ,sessions::[String]} deriving (Show, Generic, Eq)
+data User = User {uid::ObjectKey,username::String, email::String, password_hash:: Maybe String ,sessions::[String]}
+                    deriving (Show, Generic, Eq, ToBSON, FromBSON)
 
 instance ToJSON User where
   toJSON user = object
@@ -87,20 +82,15 @@ instance FromJSON User where
                 , sessions      = sessions
                 }
 
-instance ToBSON User
-instance FromBSON User
+
 instance MongoObject User where
   insertId id user = user { uid = BSE.Key (show id) }
 
   collection _ = "users"
 
 
-data Session = Session {sid:: ObjectKey, sessionUser::String} deriving (Show, Generic, Eq)
-instance ToJSON Session
-instance FromJSON Session
-
-instance ToBSON Session
-instance FromBSON Session
+data Session = Session {sid:: ObjectKey, sessionUser::String}
+              deriving (Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
 
 
 instance MongoObject Session where
@@ -110,4 +100,4 @@ instance MongoObject Session where
 
 
 
--- > insertObject Session{sid=Nothing, sessionUser="sadsfg"}
+-- > encode Session{sid=NewKey, sessionUser="sadsfg"}

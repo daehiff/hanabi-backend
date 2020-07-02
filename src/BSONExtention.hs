@@ -61,6 +61,9 @@ class ToBSON a where
 class GToBSON f where
     genericToBSON :: f a -> Document
 
+instance GToBSON U1 where
+    genericToBSON U1 = []
+
 instance (GToBSON a, GToBSON b) => GToBSON (a :*: b) where
   genericToBSON (x :*: y) = genericToBSON x ++ genericToBSON y
 

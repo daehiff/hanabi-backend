@@ -4,10 +4,11 @@
 
 module UnitSpec where
 import qualified Data.Text                     as T
-import           Database.MongoDB
+import           Database.MongoDB hiding (Key)
 import           Test.Hspec
 import           Model
-
+import ModelUtils (findObjects, insertObject, findById, run)
+import BSONExtention
 flushDB = do
   run (delete $ select [] "cards")
 
@@ -25,17 +26,17 @@ spec = (before_ doBefore) $ (after_ doAfter) $ do
   describe "database" $ do
     it "stores cards correctly" $ do
       cardInserted <-
-        (insertObject Card { cid = Nothing, number = 1, color = Red })
-      let (Just id) = cid cardInserted
+        (insertObject Card { cid = NewKey, number = 1, color = Red })
+      let (Key id) = cid cardInserted
       (Just cardFound) <- (findById (id) :: IO (Maybe Card))
       cardFound `shouldBe` cardInserted
     it "can filter output correctly" $ do
       cardInserted0 <-
-        (insertObject Card { cid = Nothing, number = 1, color = Green })
+        (insertObject Card { cid = NewKey, number = 1, color = Green })
       cardInserted1 <-
-        (insertObject Card { cid = Nothing, number = 2, color = Green })
+        (insertObject Card { cid = NewKey, number = 2, color = Green })
       cardInserted2 <-
-        (insertObject Card { cid = Nothing, number = 3, color = Green })
+        (insertObject Card { cid = NewKey, number = 3, color = Green })
       let cardsIns = [cardInserted0, cardInserted1, cardInserted2]
       (cardsFoundM) <- (findObjects [] [])
       let cardsFound = [ x | (Just x) <- cardsFoundM ]
@@ -43,11 +44,11 @@ spec = (before_ doBefore) $ (after_ doAfter) $ do
     it "can sort elements" $ do
       -- insert some cards in DB
       cardInserted0 <-
-        (insertObject Card { cid = Nothing, number = 1, color = Green })
+        (insertObject Card { cid = NewKey, number = 1, color = Green })
       cardInserted1 <-
-        (insertObject Card { cid = Nothing, number = 2, color = Green })
+        (insertObject Card { cid = NewKey, number = 2, color = Green })
       cardInserted2 <-
-        (insertObject Card { cid = Nothing, number = 3, color = Green })
+        (insertObject Card { cid = NewKey, number = 3, color = Green })
 
       -- check ascending order
       let cardsIns = [cardInserted0, cardInserted1, cardInserted2]
