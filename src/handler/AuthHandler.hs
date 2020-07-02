@@ -18,6 +18,13 @@ import           Data.ByteString.Lazy           ( fromStrict
                                                 , ByteString
                                                 )
 import           Model
+import           ModelUtils                     ( findObject
+                                                , insertObject
+                                                , updateObject
+                                                , findObjects
+                                                , findById
+                                                )
+
 import           Data.Bson                      ( val
                                                 , (=:)
                                                 )
@@ -29,15 +36,16 @@ import           Hooks
 import           Control.Lens.Internal.ByteString
                                                 ( unpackStrict8 )
 
+import           BSONExtention                  ( ObjectKey(..) )
 {-
 Creates a new session for the user and adds it to the database.
 Returns the user that is loged in and the corresponding jwt
 -}
 logUserIn :: User -> IO (User, T.Text)
 logUserIn user = do
-  let (Just userId) = uid user
-  session <- (insertObject Session { sid = Nothing, sessionUser = (userId) })
-  let (Just sessionId) = sid session
+  let (Key userId) = uid user
+  session <- (insertObject Session { sid = NewKey, sessionUser = (userId) })
+  let (Key sessionId) = sid session
   let logedInUser = user { sessions = (sessionId : (sessions user)) }
   liftIO (updateObject logedInUser)
   now <- liftIO _getNow
@@ -116,12 +124,13 @@ registerHandle = do
         )
         undefined
  where
-  createuser:: Either String (String, String, String) -> IO (Either String User)
+  createuser
+    :: Either String (String, String, String) -> IO (Either String User)
   createuser (Left  error                      ) = return (Left error)
   createuser (Right (email, username, password)) = do
     passwordHash <- liftIO
       ((hashPasswordUsingPolicy fastBcryptHashingPolicy (pack password)))
-    let newUser = User { uid           = Nothing
+    let newUser = User { uid           = NewKey
                        , email         = email
                        , password_hash = (fmap unpackStrict8 passwordHash)
                        , username      = username
@@ -129,7 +138,7 @@ registerHandle = do
                        }
     return (Right newUser)
 
-  validateEmail:: Either String User -> IO (Either String User)
+  validateEmail :: Either String User -> IO (Either String User)
   validateEmail (Left  error) = return (Left error)
   validateEmail (Right user ) = do
     existingUser <-
@@ -138,7 +147,7 @@ registerHandle = do
       (Just user) -> return (Left "user with this email already exists.")
       (Nothing  ) -> return (Right user)
 
-  validateUsername:: Either String User -> IO (Either String User)
+  validateUsername :: Either String User -> IO (Either String User)
   validateUsername (Left  error) = return (Left error)
   validateUsername (Right user ) = do
     existingUser <-
@@ -147,7 +156,7 @@ registerHandle = do
       (Just user) -> return (Left "Username is already taken.")
       (Nothing  ) -> return (Right user)
 
-  storeUser:: Either String User -> IO (Either String User)
+  storeUser :: Either String User -> IO (Either String User)
   storeUser (Left  error) = return (Left error)
   storeUser (Right user ) = do
     insertedUser <- insertObject user

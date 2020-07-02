@@ -17,10 +17,11 @@ import           Data.HVect
 import           Web.Spock
 import           System.Environment             ( getEnv )
 import           Model                          ( User
-                                                , findById
+
                                                 , uid
                                                 , sessions
                                                 )
+import ModelUtils (findById)
 
 import           Jose.Jws
 import           Jose.Jwa
@@ -42,6 +43,9 @@ import           Data.ByteString.Internal       ( ByteString )
 import           Responses                      ( errorJson
                                                 , authError
                                                 )
+
+import           BSONExtention                  ( ObjectKey(..) )
+
 {-
 SAP Stands for Session Authentication Payload
 All Data that is required by the user to send via JWT Token:
@@ -89,7 +93,7 @@ updateJWTHook = do
   setHeader "auth" jwt
   return oldCtx
  
- 
+
 sessionToJWT :: SAP -> IO T.Text
 sessionToJWT payload = do
   let (Right jwt) = hmacEncode HS384 "test" (toStrict (encode payload))
@@ -136,7 +140,7 @@ authHook = do
       then return (Right payload)
       else
         (\_ -> do
-            let (Just userId) = (uid $ user payload)
+            let (Key userId) = (uid $ user payload)
             mUser <- findById userId :: IO (Maybe User)
             if mUser == Nothing
               then return (Left "Could not verify user, please login again.")

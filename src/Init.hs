@@ -14,6 +14,12 @@ import           Data.IORef
 import qualified Data.Text                     as T
 
 import           Model
+import           ModelUtils                     ( findObject
+                                                , insertObject
+                                                , updateObject
+                                                , findObjects
+                                                , findById
+                                                )
 
 import           Data.HVect
 import           Database.MongoDB
@@ -22,7 +28,11 @@ import           Hooks                          ( initHook
                                                 , authHook
                                                 , updateJWTHook
                                                 )
-import           AuthHandler                    ( loginHandle, registerHandle )
+import           AuthHandler                    ( loginHandle
+                                                , registerHandle
+                                                )
+
+
 
 data MySession = EmptySession
 data MyAppState = DummyAppState (IORef Int)
@@ -44,9 +54,9 @@ app = do
       file (T.pack "") "./static/landingPage.html"
     post "/auth/login" $ loginHandle
     post "/auth/register" $ registerHandle
-    get "/test" $ do 
-        test <- (header "x-forwarded-for")
-        text $ T.pack (show test)
+    get "/test" $ do
+      test <- (header "x-forwarded-for")
+      text $ T.pack (show test)
     prehook authHook $ prehook updateJWTHook $ do
       get ("card" <//> var) $ cardHandler
       get "cards" $ do
