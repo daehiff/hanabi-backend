@@ -6,9 +6,13 @@ cache:
   - $HOME/.stack
   - $TRAVIS_BUILD_DIR/.stack-work
 
+services:
+  - docker
 
 before_install:
   # Download and unpack the stack executable
+  - docker pull mongo:4.0.4
+  - docker run -d -p 27017-27019:27017-27019 -n mongodb mongo:4.0.4
   - mkdir -p ~/.local/bin
   - export PATH=$HOME/.local/bin:$PATH
   - travis_retry curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
