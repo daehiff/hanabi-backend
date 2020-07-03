@@ -35,7 +35,6 @@ packages:
 # forks / in-progress versions pinned to a git hash. For example:
 #
 extra-deps:
-  - primitive-0.6.4.0
   - Spock-0.13.0.0
   - Spock-core-0.13.0.0
   - reroute-0.5.0.0
