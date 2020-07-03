@@ -6,6 +6,8 @@ cache:
   - $HOME/.stack
   - $TRAVIS_BUILD_DIR/.stack-work
   - docker-cache
+  - $TRAVIS_BUILD_DIR/Hanabi-Backend.cabal
+  - $TRAVIS_BUILD_DIR/stack.yaml.lock
 
 services:
   - docker
@@ -25,7 +27,7 @@ before_install:
 
 jobs:
   include:
-    - stage: build
+    - stage: prepare cache
       script: stack build 
       cache:
         directories:
