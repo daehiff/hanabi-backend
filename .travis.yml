@@ -41,7 +41,7 @@ jobs:
         - $HOME/.stack
         - $TRAVIS_BUILD_DIR/.stack-work
         - docker-cache  
-      script: cd $TRAVIS_BUILD_DIR && make ptest 
+      script: stack test 
       env: # setup envs for connecting to local test db
         - TEST="test"
         - DB_ADDR="127.0.0.1"
