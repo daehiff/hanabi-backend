@@ -47,6 +47,8 @@ extra-deps:
   - AesonBson-0.4.0
   - bytestring-0.10.10.0
   - pwstore-purehaskell-2.1.4
+
+
 # - acme-missiles-0.3
 # - git: https://github.com/commercialhaskell/stack.git
 #   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a
@@ -76,3 +78,4 @@ extra-deps:
 #
 # Allow a newer minor version of GHC than the snapshot specifies
 # compiler-check: newer-minor
+allow-newer: true
