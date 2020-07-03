@@ -1,7 +1,5 @@
 sudo: false
 
-language: haskell
-
 # Caching so the next build will be fast too.
 cache:
   directories:
@@ -29,21 +27,13 @@ before_install:
 
 jobs:
   include:
-    - stage: prepare cache
+    - stage: build
+      rvm: "1.0"
       name: "Build"
       script: stack build 
-      cache:
-        directories:
-        - $HOME/.stack
-        - $TRAVIS_BUILD_DIR/.stack-work
-        - docker-cache
     - stage: test
+    rvm: "1.0"
       script: stack test 
-      cache:
-        directories:
-        - $HOME/.stack
-        - $TRAVIS_BUILD_DIR/.stack-work
-        - docker-cache 
       env: # setup envs for connecting to local test db
         - TEST="test"
         - DB_ADDR="127.0.0.1"
