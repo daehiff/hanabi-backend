@@ -30,11 +30,9 @@ before_install:
 jobs:
   include:
     - stage: build
-      rvm: "1.0"
       name: "Build"
       script: stack build 
     - stage: test
-      rvm: "1.0"
       script: stack test 
       env: # setup envs for connecting to local test db
         - TEST="test"
