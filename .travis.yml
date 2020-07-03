@@ -27,7 +27,17 @@ jobs:
   include:
     - stage: build
       script: stack build 
+      cache:
+        directories:
+        - $HOME/.stack
+        - $TRAVIS_BUILD_DIR/.stack-work
+        - docker-cache
     - stage: test
+      cache:
+        directories:
+        - $HOME/.stack
+        - $TRAVIS_BUILD_DIR/.stack-work
+        - docker-cache  
       script: stack test 
       env: # setup envs for connecting to local test db
         - DB_ADDR="127.0.0.1""
