@@ -1,4 +1,11 @@
+
+
 sudo: false
+language: haskell
+stack: "2.1.3"
+ghc:
+  - "8.6.4"
+
 
 # Caching so the next build will be fast too.
 cache:
