@@ -4,6 +4,7 @@ sudo: false
 cache:
   directories:
   - $HOME/.stack
+  - $TRAVIS_BUILD_DIR/.stack-work
 
 
 before_install:
@@ -18,4 +19,4 @@ jobs:
     - stage: build
       script: stack build 
     - stage: test
-      script: ./test 1
+      script: stack test 
