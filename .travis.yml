@@ -36,12 +36,12 @@ jobs:
         - $TRAVIS_BUILD_DIR/.stack-work
         - docker-cache
     - stage: test
+      script: stack test 
       cache:
         directories:
         - $HOME/.stack
         - $TRAVIS_BUILD_DIR/.stack-work
-        - docker-cache  
-      script: stack test 
+        - docker-cache 
       env: # setup envs for connecting to local test db
         - TEST="test"
         - DB_ADDR="127.0.0.1"
