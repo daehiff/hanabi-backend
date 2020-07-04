@@ -9,20 +9,21 @@ import           Test.Hspec
 import           Model
 import ModelUtils (findObjects, insertObject, findById, run)
 import BSONExtention
-flushDB = do
-  run (delete $ select [] "cards")
+import Utils (flushDB)
 
 -- whats supposed to be executed before each unit test
-doBefore = do
+beforeEach = do
   flushDB
+  return ()
 
 -- whats supposed to be executed after each unit test
-doAfter = do
+afterEach = do
   flushDB
+  return ()
 
 
 spec :: Spec
-spec = (before_ doBefore) $ (after_ doAfter) $ do
+spec = (before_ beforeEach) $ (after_ afterEach) $ do
   describe "database" $ do
     it "stores cards correctly" $ do
       cardInserted <-

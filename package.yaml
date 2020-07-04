@@ -33,10 +33,12 @@ dependencies:
   - pwstore-purehaskell # For hashing passwords in out database
   - hspec               # testing lib
   - hspec-wai
+  - wai
   - bytestring
   - time
   - bcrypt
   - lens
+  - http-types
 
 library:
   source-dirs:
@@ -61,6 +63,7 @@ tests:
     main: Spec.hs
     source-dirs: 
       - test
+      
     ghc-options:
       - -threaded
       - -rtsopts

@@ -37,7 +37,7 @@ import           Data.Maybe                     ( fromMaybe )
 import           Hooks
 import           Control.Lens.Internal.ByteString
                                                 ( unpackStrict8 )
-
+import           Network.HTTP.Types             ( badRequest400 )
 import           BSONExtention                  ( ObjectKey(..) )
 {-
 Creates a new session for the user and adds it to the database.
@@ -73,7 +73,12 @@ loginHandle = do
         )
   eUserData <- liftIO (checkUser eEmailPw)
   case eUserData of
-    (Left error) -> json (errorJson loginError error)
+    (Left error) ->
+      (\_ -> do
+          setStatus badRequest400
+          json (errorJson loginError error)
+        )
+        undefined
     (Right user) ->
       (\_ -> do
           (logedInUser, jwt) <- liftIO $ logUserIn user
@@ -117,7 +122,12 @@ registerHandle = do
   userValid      <- liftIO $ validateUsername emailValidated
   euser          <- liftIO $ storeUser userValid
   case euser of
-    (Left error) -> text $ T.pack error
+    (Left error) ->
+      (\_ -> do
+          setStatus badRequest400
+          json (errorJson registrationError error)
+        )
+        undefined
     (Right user) ->
       (\_ -> do
           (logedInUser, jwt) <- liftIO $ logUserIn user

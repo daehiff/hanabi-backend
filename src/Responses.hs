@@ -28,3 +28,6 @@ authError = 1
 
 loginError :: Int
 loginError = 2
+
+registrationError::Int
+registrationError = 3
