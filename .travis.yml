@@ -7,7 +7,7 @@ cache:
   directories:
   - $HOME/.stack
   - $TRAVIS_BUILD_DIR/.stack-work
-  - docker-cache
+  - $HOME/docker-cache
 
 services:
   - docker
@@ -15,7 +15,7 @@ services:
 before_install:
   # MongoDB for test purposes
   - |
-    filename=docker-cache/saved_images.tar
+    filename=$HOME/docker-cache/saved_images.tar
     if [[ -f "$filename" ]]; then docker load < "$filename"; fi
     mkdir -p docker-cache
     docker pull mongo:4.0.4
