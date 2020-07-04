@@ -31,7 +31,7 @@ jobs:
       name: "Build"
       script: stack build 
     - stage: test
-      script: stack test 
+      script: stack test --ghc-options="-fobject-code"
       env: # setup envs for connecting to local test db
         - TEST="test"
         - DB_ADDR="127.0.0.1"
