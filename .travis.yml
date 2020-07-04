@@ -27,7 +27,9 @@ before_install:
 
 matrix:
   include:
-    - stage: "Build & Test"
+    - stage: build
+      name: "Build & Test"
+      if: branch = master
       script: |
               stack build 
               stack test 
