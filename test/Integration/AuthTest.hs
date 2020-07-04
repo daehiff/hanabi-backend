@@ -1,10 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Integration.AuthHandle where
+module Integration.AuthTest where
 import           Test.Hspec
 import           Test.Hspec.Wai
-import           Network.Wai                    ( Middleware )
 import           Data.ByteString.Lazy.Internal  ( ByteString )
+
 testUserRegister :: ByteString
 testUserRegister =
   "{\"email\":\"winderl13@gmail.com\",\"password\":\"supersaveandsecure\",\"username\":\"daehiff1\"}"
@@ -17,7 +17,7 @@ testUserLogin :: ByteString
 testUserLogin =
   "{\"email\":\"winderl13@gmail.com\",\"password\":\"supersaveandsecure\"}"
 
-authHandleTest = do
+authTest = do
   describe "POST /auth/register" $ do
     it "registers the user correctly" $ do
       post "/auth/register" testUserRegister `shouldRespondWith` 200
