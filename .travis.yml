@@ -27,9 +27,8 @@ before_install:
 
 matrix:
   include:
-    - name: "Build"
+    - stage: "Build & Test"
       script: stack build 
-    - name: "Test"
       script: stack test 
       env: # setup envs for connecting to local test db
         - DB_ADDR="127.0.0.1"
