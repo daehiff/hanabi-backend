@@ -27,10 +27,9 @@ before_install:
 
 jobs:
   include:
-    - stage: build
-      name: "Build"
+    - name: "Build"
       script: stack build 
-    - stage: test
+    - name: "Test"
       script: stack test 
       env: # setup envs for connecting to local test db
         - TEST="test"
