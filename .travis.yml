@@ -1,13 +1,11 @@
-
-
 sudo: false
 
 # Caching so the next build will be fast too.
 cache:
   directories:
-  - $HOME/.stack
-  - $TRAVIS_BUILD_DIR/.stack-work
-  - $HOME/docker-cache
+    - $HOME/.stack
+    - $TRAVIS_BUILD_DIR/.stack-work
+    - $HOME/docker-cache
 
 services:
   - docker
@@ -27,22 +25,13 @@ before_install:
 
 matrix:
   include:
-    - stage: build
-<<<<<<< HEAD
-      name: "Build"
-      script: stack build 
-    - stage: test
-      script: stack test --ghc-options="-fobject-code"
-=======
-      name: "Build & Test"
-      if: branch = master
-      script: |
-              stack build 
-              stack test 
->>>>>>> 1dadd9947959bc021b94068777c6725b3bb5c4f8
-      env: # setup envs for connecting to local test db
-        - DB_ADDR="127.0.0.1"
-        - DB_NAME="test"
-        - DB_PW=""
-        - DB_UNAME=""
-
+    name: "Build & Test"
+    if: branch = master
+    script: |
+      stack build 
+      stack test
+    env: # setup envs for connecting to local test db
+      - DB_ADDR="127.0.0.1"
+      - DB_NAME="test"
+      - DB_PW=""
+      - DB_UNAME=""
