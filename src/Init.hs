@@ -32,7 +32,7 @@ import           AuthHandler                    ( loginHandle
                                                 , registerHandle
                                                 )
 
-
+import           LobbyHandler                   ( createLobby )
 
 data MySession = EmptySession
 data MyAppState = DummyAppState (IORef Int)
@@ -54,10 +54,8 @@ app = do
       file (T.pack "") "./static/landingPage.html"
     post "/auth/login" $ loginHandle
     post "/auth/register" $ registerHandle
-    get "/test" $ do
-      test <- (header "x-forwarded-for")
-      text $ T.pack (show test)
     prehook authHook $ prehook updateJWTHook $ do
+      post "/lobby/create" $ createLobby
       get ("card" <//> var) $ cardHandler
       get "cards" $ do
         allCards <- liftIO ((findObjects [] []) :: IO ([Maybe Card]))

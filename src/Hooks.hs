@@ -4,6 +4,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveAnyClass #-}
 
 module Hooks where
 
@@ -54,11 +55,9 @@ All Data that is required by the user to send via JWT Token:
   currentSessionID
   ttl of the JWT
 -}
-data SAP = SAP { user::User, sessionid::String, ttl::Integer} deriving(Show, Eq, Generic)
+data SAP = SAP { user::User, sessionid::String, ttl::Integer} 
+                 deriving(Show, Eq, Generic, ToJSON, FromJSON)
 
-instance ToJSON SAP where
-
-instance FromJSON SAP where
 
 {- Helper to get curren timestamp in MS -}
 _getNow :: IO Integer

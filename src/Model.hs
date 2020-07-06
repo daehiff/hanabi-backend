@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Model where
 
@@ -22,7 +23,7 @@ import           BSONExtention                  ( ToBSON(..)
                                                 )
 import qualified BSONExtention                 as BSE
 import           ModelUtils                     ( MongoObject(..) )
-
+import           Data.Time.Clock
 data Color = Red | Blue | White | Yellow | Green | Rainbow
             deriving(Generic, Show, Eq , ToJSON, FromJSON, ToBSON, FromBSON)
 
@@ -99,5 +100,21 @@ instance MongoObject Session where
   insertId id session = session { sid = BSE.Key (show id) }
 
 
+data Lobby = Lobby {lid:: ObjectKey,
+                    lobbyHost:: String,
+                    player::[String],
+                    kickedPlayer::[String],
+                    created::UTCTime,
+                    gameId::Maybe String,
+                    salt::String,
+                    public::Bool,
+                    launched::Bool}
+                    deriving (Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
 
--- > encode Session{sid=NewKey, sessionUser="sadsfg"}
+instance MongoObject Lobby where
+  collection _ = "lobbys"
+
+  insertId id session = session { lid = BSE.Key (show id) }
+
+
+-- > findById "5f038355c3b5a054e1000000":: IO (Maybe Lobby)
