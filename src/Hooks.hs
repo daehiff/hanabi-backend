@@ -114,49 +114,47 @@ authHook = do
     (Left  errorMsg) -> json $ errorJson authError errorMsg
     (Right payload ) -> return (user payload :&: payload :&: oldCtx)
  where
-  getRawPayload :: Maybe T.Text -> IO (Either String ByteString)
-  getRawPayload Nothing    = return (Left "Header: `auth` is missing")
-  getRawPayload (Just jwt) = do
-    let eitherDecoded = hmacDecode "test" (encodeUtf8 jwt)
-    case eitherDecoded of
-      (Left  error       ) -> return (Left "Unable to parse JWT.")
-      (Right (_, payload)) -> return (Right payload)
+    getRawPayload :: Maybe T.Text -> IO (Either String ByteString)
+    getRawPayload Nothing    = return (Left "Header: `auth` is missing")
+    getRawPayload (Just jwt) = do
+      let eitherDecoded = hmacDecode "test" (encodeUtf8 jwt)
+      case eitherDecoded of
+        (Left  error       ) -> return (Left ("Unable to parse JWT: " ++ show error))
+        (Right (_, payload)) -> return (Right payload)
 
-  convertPayloadToSAP :: Either String ByteString -> IO (Either String SAP)
-  convertPayloadToSAP (Left  error     ) = return (Left error)
-  convertPayloadToSAP (Right rawPayload) = do
-    let payload = (decode (fromStrict rawPayload)) :: Maybe SAP
-    case payload of
-      Nothing -> return (Left "Error Parsing Payload, try to login again")
-      (Just payload) -> return (Right payload)
+    convertPayloadToSAP :: Either String ByteString -> IO (Either String SAP)
+    convertPayloadToSAP (Left  error     ) = return (Left error)
+    convertPayloadToSAP (Right rawPayload) = do
+      let payload = (decode (fromStrict rawPayload)) :: Maybe SAP
+      case payload of
+        Nothing -> return (Left "Error Parsing Payload, try to login again")
+        (Just payload) -> return (Right payload)
 
-  validatePayload :: Either String SAP -> IO (Either String SAP)
-  validatePayload (Left  error  ) = return (Left error)
-  validatePayload (Right payload) = do
-    now <- _getNow
-    let userTtl   = ttl payload
-    let tokenUser = user payload
-    if (isValidTTL now userTtl)
-      then return (Right payload)
-      else
-        (\_ -> do
-            let (Key userId) = (uid $ user payload)
-            mUser <- findById userId :: IO (Maybe User)
-            if mUser == Nothing
-              then return (Left "Could not verify user, please login again.")
-              else
-                (\_ -> do
-                    let (Just user) = mUser
-                    let newPayload  = payload { user = user }
-                    if (sessionid newPayload) `elem` (sessions user)
-                      then return (Right newPayload)
-                      else return (Left "Session Expired, please login again.")
-                  )
-                  undefined
-          )
-          undefined
+    validatePayload :: Either String SAP -> IO (Either String SAP)
+    validatePayload (Left  error  ) = return (Left error)
+    validatePayload (Right payload) = do
+      now <- _getNow
+      let userTtl   = ttl payload
+      let tokenUser = user payload
+      if (isValidTTL now userTtl)
+        then return (Right payload)
+        else
+          (\_ -> do
+              let (Key userId) = (uid $ user payload)
+              mUser <- findById userId :: IO (Maybe User)
+              if mUser == Nothing
+                then return (Left "Could not verify user, please login again.")
+                else
+                  (\_ -> do
+                      let (Just user) = mUser
+                      let newPayload  = payload { user = user }
+                      if (sessionid newPayload) `elem` (sessions user)
+                        then return (Right newPayload)
+                        else return (Left "Session Expired, please login again.")
+                    )
+                    undefined
+            )
+            undefined
 
-  isValidTTL :: Integer -> Integer -> Bool
-  isValidTTL now ttl = (now - ttl) < 0
-
-
+    isValidTTL :: Integer -> Integer -> Bool
+    isValidTTL now ttl = (now - ttl) < 0

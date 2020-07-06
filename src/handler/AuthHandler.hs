@@ -73,19 +73,13 @@ loginHandle = do
         )
   eUserData <- liftIO (checkUser eEmailPw)
   case eUserData of
-    (Left error) ->
-      (\_ -> do
-          setStatus badRequest400
-          json (errorJson loginError error)
-        )
-        undefined
-    (Right user) ->
-      (\_ -> do
-          (logedInUser, jwt) <- liftIO $ logUserIn user
-          setHeader "auth" jwt
-          json (sucessJson sucessCode logedInUser)
-        )
-        undefined
+    (Left error) -> do
+      setStatus badRequest400
+      json (errorJson loginError error)
+    (Right user) -> do
+      (logedInUser, jwt) <- liftIO $ logUserIn user
+      setHeader "auth" jwt
+      json (sucessJson sucessCode logedInUser)
  where
   checkUser :: Either String (String, String) -> IO (Either String User)
   checkUser (Left  error            ) = return (Left error)
@@ -122,19 +116,13 @@ registerHandle = do
   userValid      <- liftIO $ validateUsername emailValidated
   euser          <- liftIO $ storeUser userValid
   case euser of
-    (Left error) ->
-      (\_ -> do
-          setStatus badRequest400
-          json (errorJson registrationError error)
-        )
-        undefined
-    (Right user) ->
-      (\_ -> do
-          (logedInUser, jwt) <- liftIO $ logUserIn user
-          setHeader "auth" jwt
-          json (sucessJson sucessCode logedInUser)
-        )
-        undefined
+    (Left error) -> do
+      setStatus badRequest400
+      json (errorJson registrationError error)
+    (Right user) -> do
+      (logedInUser, jwt) <- liftIO $ logUserIn user
+      setHeader "auth" jwt
+      json (sucessJson sucessCode logedInUser)
  where
   createuser
     :: Either String (String, String, String) -> IO (Either String User)

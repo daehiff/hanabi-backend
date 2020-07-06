@@ -39,6 +39,7 @@ dependencies:
   - bcrypt
   - lens
   - http-types
+  - random
 
 library:
   source-dirs:

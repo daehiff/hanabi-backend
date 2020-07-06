@@ -21,7 +21,7 @@ import qualified Data.Bson                     as BSON
                                                 ( lookup )
 import           Data.Bson
 import qualified Data.Text                     as T
-                                                ( pack )
+                                                ( pack, unpack )
 import           Data.Typeable
 
 import           Data.Aeson                     ( ToJSON(..)
@@ -39,7 +39,7 @@ instance ToJSON ObjectKey where
 
 instance FromJSON ObjectKey where
   parseJSON AE.Null = return NewKey
-  parseJSON (AE.String id) = return (Key (show id))
+  parseJSON (AE.String id) = return (Key (T.unpack id))
 
 constructorLabel :: Label
 constructorLabel = T.pack "_co"
