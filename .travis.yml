@@ -7,7 +7,7 @@ cache:
   directories:
   - $HOME/.stack
   - $TRAVIS_BUILD_DIR/.stack-work
-  - docker-cache
+  - $HOME/docker-cache
 
 services:
   - docker
@@ -15,7 +15,7 @@ services:
 before_install:
   # MongoDB for test purposes
   - |
-    filename=docker-cache/saved_images.tar
+    filename=$HOME/docker-cache/saved_images.tar
     if [[ -f "$filename" ]]; then docker load < "$filename"; fi
     mkdir -p docker-cache
     docker pull mongo:4.0.4
@@ -25,15 +25,22 @@ before_install:
   - export PATH=$HOME/.local/bin:$PATH
   - travis_retry curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
 
-jobs:
+matrix:
   include:
     - stage: build
+<<<<<<< HEAD
       name: "Build"
       script: stack build 
     - stage: test
       script: stack test --ghc-options="-fobject-code"
+=======
+      name: "Build & Test"
+      if: branch = master
+      script: |
+              stack build 
+              stack test 
+>>>>>>> 1dadd9947959bc021b94068777c6725b3bb5c4f8
       env: # setup envs for connecting to local test db
-        - TEST="test"
         - DB_ADDR="127.0.0.1"
         - DB_NAME="test"
         - DB_PW=""
