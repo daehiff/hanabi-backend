@@ -172,6 +172,52 @@ joinLobby salt = do
     return (Right newLobby)
 
 {-
+@api POST {{base_url}}/lobby/:lobbyId/leave leave
+@apiName leave 
+@apiGroup Lobby
+@apiDescription leave a lobby you have joined previously 
+-}
+leaveLobby
+  :: (MonadIO m, ListContains n User xs) => String -> ActionCtxT (HVect xs) m b
+leaveLobby lobbyId = do
+  oldCtx <- getContext
+  let user :: User = (findFirst oldCtx)
+  elobby <-
+    liftIO
+    $   findLobby lobbyId
+    >>= checkPlayerIsInLobby user
+    >>= updateLobby user
+  case elobby of
+    (Left error) -> do
+      setStatus badRequest400
+      json $ errorJson errorJoinLobby error
+    (Right lobby) -> json $ sucessJson sucessCode lobby
+ where
+  findLobby :: String -> IO (Either String Lobby)
+  findLobby lobbyId = do
+    mLobby <- findById lobbyId :: IO (Maybe Lobby)
+    case mLobby of
+      Nothing      -> return (Left "Could not find lobby")
+      (Just lobby) -> return (Right lobby)
+
+  checkPlayerIsInLobby
+    :: User -> Either String Lobby -> IO (Either String Lobby)
+  checkPlayerIsInLobby _ (Left error) = return (Left error)
+  checkPlayerIsInLobby user (Right lobby) =
+    let (Key _id) = uid user
+    in  if not $ _id `elem` player lobby
+          then return (Left "You are not part of this lobby")
+          else return (Right lobby)
+
+  updateLobby :: User -> Either String Lobby -> IO (Either String Lobby)
+  updateLobby _    (Left  error) = return (Left error)
+  updateLobby user (Right lobby) = do
+    let (Key _id) = uid user
+    let newLobby = lobby { player = [ x | x <- (player lobby), x /= _id ] }
+    updateObject newLobby
+    return (Right newLobby)
+
+{-
 @api POST {{base_url}}/lobby/:lobbyId/kick/:userId kick
 @apiName kick 
 @apiGroup Lobby
@@ -194,7 +240,7 @@ kickPlayer lobbyId playerId = do
     >>= checkPlayer playerId
     >>= updateLobby playerId
   case elobby of
-    (Left  error) -> do 
+    (Left error) -> do
       setStatus badRequest400
       json $ errorJson errorKickPlayer error
     (Right lobby) -> json $ sucessJson sucessCode lobby
