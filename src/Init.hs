@@ -32,7 +32,7 @@ import           AuthHandler                    ( loginHandle
                                                 , registerHandle
                                                 )
 
-import           LobbyHandler                   ( createLobby )
+import           LobbyHandler                   ( createLobby, joinLobby , findLobbys, joinLobby)
 
 data MySession = EmptySession
 data MyAppState = DummyAppState (IORef Int)
@@ -56,6 +56,9 @@ app = do
     post "/auth/register" $ registerHandle
     prehook authHook $ prehook updateJWTHook $ do
       post "/lobby/create" $ createLobby
+      get ("/lobby/find") findLobbys
+      post ("/lobby/join" <//> var ) $ joinLobby
+      
       get ("card" <//> var) $ cardHandler
       get "cards" $ do
         allCards <- liftIO ((findObjects [] []) :: IO ([Maybe Card]))

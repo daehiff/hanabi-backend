@@ -31,3 +31,12 @@ loginError = 2
 
 registrationError::Int
 registrationError = 3
+
+lobbyNotFoundError:: Int
+lobbyNotFoundError = 4
+
+errorJoinLobby:: Int
+errorJoinLobby = 5
+
+errorKickPlayer:: Int
+errorKickPlayer = 6
