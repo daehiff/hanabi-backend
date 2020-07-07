@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 
-module AuthHandler where
+module Handler.Auth where
 
 import           Web.Spock
 import           Web.Spock.Config
@@ -20,7 +20,7 @@ import           Data.ByteString.Lazy           ( fromStrict
                                                 , ByteString
                                                 )
 import           Model
-import           ModelUtils                     ( findObject
+import           Model.Utils                    ( findObject
                                                 , insertObject
                                                 , updateObject
                                                 , findObjects
@@ -38,7 +38,10 @@ import           Hooks
 import           Control.Lens.Internal.ByteString
                                                 ( unpackStrict8 )
 import           Network.HTTP.Types             ( badRequest400 )
-import           BSONExtention                  ( ObjectKey(..) )
+import           Model.Utils
+
+-- TODO generic secret for jwt
+
 {-
 Creates a new session for the user and adds it to the database.
 Returns the user that is loged in and the corresponding jwt

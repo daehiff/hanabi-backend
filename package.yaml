@@ -31,8 +31,6 @@ dependencies:
   - bson # serialize documents
   - aeson # JSON Parsing
   - pwstore-purehaskell # For hashing passwords in out database
-  - hspec               # testing lib
-  - hspec-wai
   - wai
   - bytestring
   - time
@@ -44,7 +42,6 @@ dependencies:
 library:
   source-dirs:
     - src
-    - src/handler
 
 executables:
   Hanabi-Backend-exe:
@@ -57,18 +54,20 @@ executables:
       - -with-rtsopts=-N
       #- -fwarn-unused-imports
     dependencies:
+      - base >= 4.7 && < 5
       - Hanabi-Backend
+    
 
 tests:
   Spock-example-test:
     main: Spec.hs
     source-dirs: 
-      - test
-      
+      - test      
     ghc-options:
       - -threaded
       - -rtsopts
       - -with-rtsopts=-N
     dependencies:
       - Hanabi-Backend
-      - hspec
+      - hspec               # testing lib
+      - hspec-wai

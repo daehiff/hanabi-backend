@@ -11,18 +11,14 @@ import           Data.Aeson                     ( ToJSON(..)
                                                 , decode
                                                 , encode
                                                 )
-import           Data.Aeson.Types        hiding ( String )
-import           Database.MongoDB
+import           Data.Aeson.Types        hiding ( String ,Key)
+import           Database.MongoDB hiding (Key)
 import           GHC.Generics
 import qualified Data.Text                     as T
 import           System.Environment             ( getEnv )
 
-import           BSONExtention                  ( ToBSON(..)
-                                                , FromBSON(..)
-                                                , ObjectKey(..)
-                                                )
-import qualified BSONExtention                 as BSE
-import           ModelUtils                     ( MongoObject(..) )
+
+import           Model.Utils                     ( MongoObject(..), ObjectKey(..), FromBSON(..), ToBSON(..))
 import           Data.Time.Clock
 data Color = Red | Blue | White | Yellow | Green | Rainbow
             deriving(Generic, Show, Eq , ToJSON, FromJSON, ToBSON, FromBSON)
@@ -56,7 +52,7 @@ data Card = Card {cid::ObjectKey , color::Color, number::Int}
 instance MongoObject Card where
   collection _ = "cards"
 
-  insertId id card = card { cid = BSE.Key (show id) }
+  insertId id card = card { cid = Key (show id) }
 
 
 data User = User {uid::ObjectKey,username::String, email::String, password_hash:: Maybe String ,sessions::[String]}
@@ -85,7 +81,7 @@ instance FromJSON User where
 
 
 instance MongoObject User where
-  insertId id user = user { uid = BSE.Key (show id) }
+  insertId id user = user { uid = Key (show id) }
 
   collection _ = "users"
 
@@ -97,7 +93,7 @@ data Session = Session {sid:: ObjectKey, sessionUser::String}
 instance MongoObject Session where
   collection _ = "sessions"
 
-  insertId id session = session { sid = BSE.Key (show id) }
+  insertId id session = session { sid = Key (show id) }
 
 
 data Lobby = Lobby {lid:: ObjectKey,
@@ -114,7 +110,7 @@ data Lobby = Lobby {lid:: ObjectKey,
 instance MongoObject Lobby where
   collection _ = "lobbys"
 
-  insertId id session = session { lid = BSE.Key (show id) }
+  insertId id session = session { lid = Key (show id) }
 
 
 -- > findById "5f038355c3b5a054e1000000":: IO (Maybe Lobby)

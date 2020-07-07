@@ -19,11 +19,10 @@ import           Data.HVect
 import           Web.Spock
 import           System.Environment             ( getEnv )
 import           Model                          ( User
-
                                                 , uid
                                                 , sessions
                                                 )
-import ModelUtils (findById)
+import           Model.Utils
 
 import           Jose.Jws
 import           Jose.Jwa
@@ -46,8 +45,6 @@ import           Responses                      ( errorJson
                                                 , authError
                                                 )
 
-import           BSONExtention                  ( ObjectKey(..) )
-
 {-
 SAP Stands for Session Authentication Payload
 All Data that is required by the user to send via JWT Token:
@@ -55,7 +52,7 @@ All Data that is required by the user to send via JWT Token:
   currentSessionID
   ttl of the JWT
 -}
-data SAP = SAP { user::User, sessionid::String, ttl::Integer} 
+data SAP = SAP { user::User, sessionid::String, ttl::Integer}
                  deriving(Show, Eq, Generic, ToJSON, FromJSON)
 
 
@@ -92,7 +89,7 @@ updateJWTHook = do
   jwt <- liftIO $ sessionToJWT payload
   setHeader "auth" jwt
   return oldCtx
- 
+
 
 sessionToJWT :: SAP -> IO T.Text
 sessionToJWT payload = do
@@ -114,47 +111,47 @@ authHook = do
     (Left  errorMsg) -> json $ errorJson authError errorMsg
     (Right payload ) -> return (user payload :&: payload :&: oldCtx)
  where
-    getRawPayload :: Maybe T.Text -> IO (Either String ByteString)
-    getRawPayload Nothing    = return (Left "Header: `auth` is missing")
-    getRawPayload (Just jwt) = do
-      let eitherDecoded = hmacDecode "test" (encodeUtf8 jwt)
-      case eitherDecoded of
-        (Left  error       ) -> return (Left ("Unable to parse JWT: " ++ show error))
-        (Right (_, payload)) -> return (Right payload)
+  getRawPayload :: Maybe T.Text -> IO (Either String ByteString)
+  getRawPayload Nothing    = return (Left "Header: `auth` is missing")
+  getRawPayload (Just jwt) = do
+    let eitherDecoded = hmacDecode "test" (encodeUtf8 jwt)
+    case eitherDecoded of
+      (Left error) -> return (Left ("Unable to parse JWT: " ++ show error))
+      (Right (_, payload)) -> return (Right payload)
 
-    convertPayloadToSAP :: Either String ByteString -> IO (Either String SAP)
-    convertPayloadToSAP (Left  error     ) = return (Left error)
-    convertPayloadToSAP (Right rawPayload) = do
-      let payload = (decode (fromStrict rawPayload)) :: Maybe SAP
-      case payload of
-        Nothing -> return (Left "Error Parsing Payload, try to login again")
-        (Just payload) -> return (Right payload)
+  convertPayloadToSAP :: Either String ByteString -> IO (Either String SAP)
+  convertPayloadToSAP (Left  error     ) = return (Left error)
+  convertPayloadToSAP (Right rawPayload) = do
+    let payload = (decode (fromStrict rawPayload)) :: Maybe SAP
+    case payload of
+      Nothing -> return (Left "Error Parsing Payload, try to login again")
+      (Just payload) -> return (Right payload)
 
-    validatePayload :: Either String SAP -> IO (Either String SAP)
-    validatePayload (Left  error  ) = return (Left error)
-    validatePayload (Right payload) = do
-      now <- _getNow
-      let userTtl   = ttl payload
-      let tokenUser = user payload
-      if (isValidTTL now userTtl)
-        then return (Right payload)
-        else
-          (\_ -> do
-              let (Key userId) = (uid $ user payload)
-              mUser <- findById userId :: IO (Maybe User)
-              if mUser == Nothing
-                then return (Left "Could not verify user, please login again.")
-                else
-                  (\_ -> do
-                      let (Just user) = mUser
-                      let newPayload  = payload { user = user }
-                      if (sessionid newPayload) `elem` (sessions user)
-                        then return (Right newPayload)
-                        else return (Left "Session Expired, please login again.")
-                    )
-                    undefined
-            )
-            undefined
+  validatePayload :: Either String SAP -> IO (Either String SAP)
+  validatePayload (Left  error  ) = return (Left error)
+  validatePayload (Right payload) = do
+    now <- _getNow
+    let userTtl   = ttl payload
+    let tokenUser = user payload
+    if (isValidTTL now userTtl)
+      then return (Right payload)
+      else
+        (\_ -> do
+            let (Key userId) = (uid $ user payload)
+            mUser <- findById userId :: IO (Maybe User)
+            if mUser == Nothing
+              then return (Left "Could not verify user, please login again.")
+              else
+                (\_ -> do
+                    let (Just user) = mUser
+                    let newPayload  = payload { user = user }
+                    if (sessionid newPayload) `elem` (sessions user)
+                      then return (Right newPayload)
+                      else return (Left "Session Expired, please login again.")
+                  )
+                  undefined
+          )
+          undefined
 
-    isValidTTL :: Integer -> Integer -> Bool
-    isValidTTL now ttl = (now - ttl) < 0
+  isValidTTL :: Integer -> Integer -> Bool
+  isValidTTL now ttl = (now - ttl) < 0

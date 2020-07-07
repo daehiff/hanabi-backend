@@ -2,7 +2,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module LobbyHandler where
+module Handler.Lobby where
 import           Web.Spock
 import           Data.Text               hiding ( unfoldr
                                                 , take
@@ -16,20 +16,27 @@ import           Data.Bson                      ( val
                                                 , (=:)
                                                 )
 
-import           BSONExtention                  ( ObjectKey(..) )
+
 import           Data.Time.Clock
 import           Model                          ( User(..)
                                                 , Lobby(..)
                                                 )
-import           ModelUtils
+import           Model.Utils
 import           Web.Spock.Config
 import           Control.Monad.Trans
 import           Data.HVect              hiding ( length
                                                 , (!!)
                                                 )
-import           System.Random                  ( randomRIO )
 import           Responses
 import           Network.HTTP.Types             ( badRequest400 )
+
+import           Controller.Lobby               ( findLobbyById
+                                                , generateSalt
+                                                )
+
+-- TODO check if salt is already in use
+
+
 {-
 @api POST {{base_url}}/lobby/create create
 @apiName create
@@ -57,22 +64,7 @@ createLobby = do
                      }
   lobby <- liftIO $ insertObject lobbyC
   json $ sucessJson sucessCode lobby
- where
-  generateSalt :: IO String
-  generateSalt = do
-    adjectives <- getWords "./static/wordlist-adjectives.txt"
-    nouns      <- getWords "./static/wordlist-nouns.txt"
-    let adjective = "cool"
-    let noun      = "language"
-    adjIdx  <- randomRIO (0, length adjectives - 1)
-    nounIdx <- randomRIO (0, length adjectives - 1)
 
-    return ((adjectives !! adjIdx) ++ "-" ++ (nouns !! nounIdx))
-
-  getWords :: FilePath -> IO [String]
-  getWords file = do
-    contents <- readFile file
-    return (lines contents)
 
 {-
 @api GET {{base_url}}/lobby/find find
@@ -110,7 +102,7 @@ joinLobby salt = do
   let user :: User = (findFirst oldCtx)
   elobby <-
     liftIO
-    $   findLobby salt
+    $   findLobbyBySalt salt
     >>= checkStarted
     >>= checkJoined user
     >>= checkKickedPlayer user
@@ -122,8 +114,8 @@ joinLobby salt = do
       setStatus badRequest400
       json $ sucessJson sucessCode lobby
  where
-  findLobby :: String -> IO (Either String Lobby)
-  findLobby salt = do
+  findLobbyBySalt :: String -> IO (Either String Lobby)
+  findLobbyBySalt salt = do
     now <- liftIO getCurrentTime
     let past = addUTCTime (-60 * 60 :: NominalDiffTime) now
     mLobby <- liftIO
@@ -184,7 +176,7 @@ leaveLobby lobbyId = do
   let user :: User = (findFirst oldCtx)
   elobby <-
     liftIO
-    $   findLobby lobbyId
+    $   findLobbyById lobbyId
     >>= checkPlayerIsInLobby user
     >>= updateLobby user
   case elobby of
@@ -193,13 +185,6 @@ leaveLobby lobbyId = do
       json $ errorJson errorJoinLobby error
     (Right lobby) -> json $ sucessJson sucessCode lobby
  where
-  findLobby :: String -> IO (Either String Lobby)
-  findLobby lobbyId = do
-    mLobby <- findById lobbyId :: IO (Maybe Lobby)
-    case mLobby of
-      Nothing      -> return (Left "Could not find lobby")
-      (Just lobby) -> return (Right lobby)
-
   checkPlayerIsInLobby
     :: User -> Either String Lobby -> IO (Either String Lobby)
   checkPlayerIsInLobby _ (Left error) = return (Left error)
@@ -234,7 +219,7 @@ kickPlayer lobbyId playerId = do
   let (Key hostId) = uid host
   elobby <-
     liftIO
-    $   findLobby lobbyId
+    $   findLobbyById lobbyId
     >>= isHost hostId
     >>= checkHost playerId
     >>= checkPlayer playerId
@@ -245,13 +230,6 @@ kickPlayer lobbyId playerId = do
       json $ errorJson errorKickPlayer error
     (Right lobby) -> json $ sucessJson sucessCode lobby
  where
-  findLobby :: String -> IO (Either String Lobby)
-  findLobby lobbyId = do
-    mlobby <- liftIO $ findById lobbyId :: IO (Maybe Lobby)
-    case mlobby of
-      Nothing      -> return (Left "Lobby not found")
-      (Just lobby) -> return (Right lobby)
-
   isHost :: String -> Either String Lobby -> IO (Either String Lobby)
   isHost _      (Left  error) = return (Left error)
   isHost hostId (Right lobby) = do
@@ -279,3 +257,26 @@ kickPlayer lobbyId playerId = do
     let newLobby = lobby { player = [ x | x <- (player lobby), x /= userId ] }
     updateObject newLobby
     return (Right newLobby)
+
+
+{-
+@api POST {{base_url}}/lobby/:lobbyId/status status
+@apiName status 
+@apiGroup Lobby
+@apiDescription get the status of the current lobby (in case you are a part of it)
+-}
+getStatus
+  :: (MonadIO m, ListContains n User xs) => String -> ActionCtxT (HVect xs) m b
+getStatus lobbyId = do
+  oldCtx <- getContext
+  let user :: User = (findFirst oldCtx)
+  let (Key userId) = uid user
+  eLobby <- liftIO $ findLobbyById lobbyId >>= isInLobby userId
+  text $ T.pack $ show eLobby
+ where
+  isInLobby :: String -> Either String Lobby -> IO (Either String Lobby)
+  isInLobby _      (Left  error) = return (Left error)
+  isInLobby userId (Right lobby) = do
+    if not $ userId `elem` (player lobby)
+      then return (Left "You are not a memeber of this lobby")
+      else return (Right lobby)

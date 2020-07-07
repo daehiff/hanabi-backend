@@ -6,8 +6,7 @@ import qualified Data.Text                     as T
 import           Database.MongoDB hiding (Key)
 import           Test.Hspec
 import           Model
-import ModelUtils (findObjects, insertObject, findById, run)
-import BSONExtention
+import Model.Utils (findObjects, insertObject, findById, run)
 import           System.Environment             ( getEnv )
 
 flushDB :: IO ()

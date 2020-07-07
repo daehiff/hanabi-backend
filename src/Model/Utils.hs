@@ -2,7 +2,14 @@
 {-# LANGUAGE DefaultSignatures, DeriveGeneric, TypeOperators, FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module ModelUtils where
+module Model.Utils
+  ( ObjectKey(..)
+  , MongoObject(..)
+  , FromBSON(..)
+  , ToBSON(..)
+  , run
+  )
+where
 
 import           Data.Aeson                     ( ToJSON()
                                                 , FromJSON(parseJSON)
@@ -10,7 +17,10 @@ import           Data.Aeson                     ( ToJSON()
 import           Database.MongoDB
 import qualified Data.Text                     as T
 import           System.Environment             ( getEnv )
-import           BSONExtention
+import           Model.BSONExtention
+------------------------------------------------------------------
+
+
 instance (Val a, Val b) => Val (Either a b) where
   val (Left  a) = val (True, a)
   val (Right a) = val (False, a)

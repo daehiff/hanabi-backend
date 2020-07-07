@@ -14,7 +14,7 @@ import           Data.IORef
 import qualified Data.Text                     as T
 
 import           Model
-import           ModelUtils                     ( findObject
+import           Model.Utils                     ( findObject
                                                 , insertObject
                                                 , updateObject
                                                 , findObjects
@@ -28,11 +28,11 @@ import           Hooks                          ( initHook
                                                 , authHook
                                                 , updateJWTHook
                                                 )
-import           AuthHandler                    ( loginHandle
+import           Handler.Auth                    ( loginHandle
                                                 , registerHandle
                                                 )
 
-import           LobbyHandler                   ( createLobby, joinLobby , findLobbys, joinLobby)
+import           Handler.Lobby                   ( createLobby, joinLobby , findLobbys, joinLobby)
 
 data MySession = EmptySession
 data MyAppState = DummyAppState (IORef Int)

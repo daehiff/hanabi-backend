@@ -10,7 +10,7 @@
 {-# LANGUAGE ScopedTypeVariables    #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module BSONExtention where
+module Model.BSONExtention where
 
 import           GHC.Generics
 
