@@ -20,7 +20,7 @@ sucessJson code message = object
 
 {-Below the error sucess codes are defined-}
 
-sucessCode:: Int
+sucessCode :: Int
 sucessCode = 0
 
 authError :: Int
@@ -29,14 +29,17 @@ authError = 1
 loginError :: Int
 loginError = 2
 
-registrationError::Int
+registrationError :: Int
 registrationError = 3
 
-lobbyNotFoundError:: Int
+lobbyNotFoundError :: Int
 lobbyNotFoundError = 4
 
-errorJoinLobby:: Int
+errorJoinLobby :: Int
 errorJoinLobby = 5
 
-errorKickPlayer:: Int
+errorKickPlayer :: Int
 errorKickPlayer = 6
+
+errorLaunch :: Int
+errorLaunch = 7

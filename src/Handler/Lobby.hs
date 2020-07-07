@@ -280,3 +280,37 @@ getStatus lobbyId = do
     if not $ userId `elem` (player lobby)
       then return (Left "You are not a memeber of this lobby")
       else return (Right lobby)
+
+{-
+@api POST {{base_url}}/lobby/:lobbyId/launch launch
+@apiName launch 
+@apiGroup Lobby
+@apiDescription launch a game (players must be 4<=p<=6)
+-}
+launchGame
+  :: (MonadIO m, ListContains n User xs) => String -> ActionCtxT (HVect xs) m b
+launchGame lobbyId = do
+  elobby <- liftIO $ findLobbyById lobbyId >>= areEnoughPlayer >>= updateLobby
+  case elobby of
+    (Left error) -> do
+      setStatus badRequest400
+      json $ errorJson errorLaunch error
+    (Right lobby) -> do
+      json $ sucessJson sucessCode lobby
+ where
+  areEnoughPlayer :: Either String Lobby -> IO (Either String Lobby)
+  areEnoughPlayer (Left  error) = return (Left error)
+  areEnoughPlayer (Right lobby) = do
+    if (length (player lobby)) < 4
+      then return (Left "To few player.")
+      else do
+        if ((length (player lobby)) > 6)
+          then return (Left "To mucg player.")
+          else return (Right lobby)
+  updateLobby :: Either String Lobby -> IO (Either String Lobby)
+  updateLobby (Left  error) = return (Left error)
+  updateLobby (Right lobby) = do
+    let newLobby = lobby { launched = True }
+    updateObject newLobby
+    return (Right newLobby)
+
