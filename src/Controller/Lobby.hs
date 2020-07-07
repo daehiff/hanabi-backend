@@ -29,10 +29,3 @@ findLobbyById lobbyId = do
     (Just lobby) -> return (Right lobby)
 
 
-checkJoined :: String -> User -> Either String Lobby -> IO (Either String Lobby)
-checkJoined _ _ (Left error) = return (Left error)
-checkJoined errorMsg user (Right lobby) =
-  let (Key _id) = uid user
-  in  if (_id `elem` (player lobby))
-        then return (Left errorMsg)
-        else return (Right lobby)
