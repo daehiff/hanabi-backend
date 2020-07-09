@@ -26,7 +26,7 @@ before_install:
   - travis_retry curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
   - chmod +x .travis/genDoc.sh
 
-matrix:
+jobs:
   include:
     - stage: "Generate Doc"
       script: .travis/genDoc.sh
