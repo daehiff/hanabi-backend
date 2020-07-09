@@ -39,3 +39,5 @@ jobs:
         - DB_NAME="test"
         - DB_PW=""
         - DB_UNAME=""
+    - stage: "Generate Doc"
+      script: .travis/genDoc.sh
