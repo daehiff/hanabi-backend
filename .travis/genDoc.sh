@@ -15,7 +15,7 @@ upload_files() {
   git add static/doc
   git commit -m "Travis build: $TRAVIS_BUILD_NUMBER"
   git remote rm origin
-  git remote add origin https://vinaygopinath:${GH_ACESS_TOKEN}@git@github.com:daehiff/hanabi-backend.git > /dev/null 2>&1
+  git remote add origin https://travis:${GH_ACESS_TOKEN}@github.com:daehiff/hanabi-backend.git > /dev/null 2>&1
   git push origin $TRAVIS_BRANCH --quiet
 }
 
