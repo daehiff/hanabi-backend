@@ -1,5 +1,5 @@
 sudo: false
-
+language: node_js
 # Caching so the next build will be fast too.
 cache:
   directories:
@@ -25,13 +25,16 @@ before_install:
 
 matrix:
   include:
-    name: "Build & Test"
-    if: branch = master
-    script: |
-      stack build 
-      stack test
-    env: # setup envs for connecting to local test db
-      - DB_ADDR="127.0.0.1"
-      - DB_NAME="test"
-      - DB_PW=""
-      - DB_UNAME=""
+    - stage: "Generate Doc"
+      script: 
+    - stage: "Build & Test" 
+      name: "Build & Test"
+      if: branch = master
+      script: |
+        stack build 
+        stack test
+      env: # setup envs for connecting to local test db
+        - DB_ADDR="127.0.0.1"
+        - DB_NAME="test"
+        - DB_PW=""
+        - DB_UNAME=""
