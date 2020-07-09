@@ -1,4 +1,4 @@
-sudo: false
+sudo: true
 language: node_js
 # Caching so the next build will be fast too.
 cache:
