@@ -68,11 +68,6 @@ app = do
       post ("/lobby/join" <//> var) $ joinLobby
 
 
--- $> :t app 
-
-
-
--- $> :t middleware
 cardHandler :: MonadIO m => String -> ActionCtxT ctx m b
 cardHandler id = do
   card <- liftIO ((findById id) :: IO (Maybe Card))

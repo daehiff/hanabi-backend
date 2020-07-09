@@ -42,27 +42,19 @@ import           Model.Utils
 
 -- TODO generic secret for jwt
 
-{-
-Creates a new session for the user and adds it to the database.
-Returns the user that is loged in and the corresponding jwt
--}
-logUserIn :: User -> IO (User, T.Text)
-logUserIn user = do
-  let (Key userId) = uid user
-  session <- (insertObject Session { sid = NewKey, sessionUser = (userId) })
-  let (Key sessionId) = sid session
-  let logedInUser = user { sessions = (sessionId : (sessions user)) }
-  liftIO (updateObject logedInUser)
-  now <- liftIO _getNow
-  let payload = SAP { user      = logedInUser
-                    , sessionid = sessionId
-                    , ttl       = now + 15 * 60 * 1000
-                    }
-  jwt <- liftIO $ sessionToJWT payload
-  return (logedInUser, jwt)
+
 
 {-
-TODO add api doc here
+@api {post} {{base_url}}/auth/login Log user in
+@apiName login 
+@apiGroup Auth
+@apiDescription launch a game (players must be 4<=p<=6)
+@apiErrorExample {json} Sample Input:
+{
+    "email": "samplemail@provider.com",
+    "password": "supersaveandsecure"
+}
+
 -}
 loginHandle :: MonadIO m => ActionCtxT ctx m b
 loginHandle = do
@@ -101,7 +93,16 @@ loginHandle = do
             else (Left "invalid password")
 
 {-
-TODO add apidoc here
+@api {post} {{base_url}}/auth/login Register user 
+@apiName register
+@apiGroup Auth
+@apiDescription Register a new User
+@apiErrorExample {json} Sample Input:
+{
+    "email": "samplemail@provider.com",
+    "password": "supersaveandsecure",
+    "username": "sampleusername"
+}
 -}
 registerHandle :: MonadIO m => ActionCtxT ctx m b
 registerHandle = do
@@ -166,10 +167,6 @@ registerHandle = do
     return (Right insertedUser)
 
 
-
-{-
-Parse a json Body by a custom set strategy defined by a function that maps the object towards the custom datatype
--}
 parseBody :: ByteString -> (Object -> Parser b) -> Either String b
 parseBody rawBodyStr parseStrat = do
   let (eResult) = (eitherDecode rawBodyStr) :: Either String Object
@@ -177,3 +174,17 @@ parseBody rawBodyStr parseStrat = do
     (Left  error ) -> (Left error)
     (Right result) -> (flip parseEither result $ parseStrat)
 
+logUserIn :: User -> IO (User, T.Text)
+logUserIn user = do
+  let (Key userId) = uid user
+  session <- (insertObject Session { sid = NewKey, sessionUser = (userId) })
+  let (Key sessionId) = sid session
+  let logedInUser = user { sessions = (sessionId : (sessions user)) }
+  liftIO (updateObject logedInUser)
+  now <- liftIO _getNow
+  let payload = SAP { user      = logedInUser
+                    , sessionid = sessionId
+                    , ttl       = now + 15 * 60 * 1000
+                    }
+  jwt <- liftIO $ sessionToJWT payload
+  return (logedInUser, jwt)
