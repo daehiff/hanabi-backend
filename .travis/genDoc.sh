@@ -3,6 +3,7 @@
 setup_git() {
   git config --global user.email "travis@travis-ci.org"
   git config --global user.name "Travis CI"
+  git remote remove origin
   git remote add origin https://$GH_ACESS_TOKEN@github.com/daehiff/hanabi-backend.git > /dev/null 2>&1
   git pull origin $TRAVIS_BRANCH 
 }
