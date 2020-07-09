@@ -3,46 +3,43 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Handler.Lobby where
+
 import           Web.Spock
+import           Web.Spock.Config
+import           Responses
+import           Network.HTTP.Types             ( badRequest400 )
 import           Data.Text               hiding ( unfoldr
                                                 , take
                                                 , lines
                                                 , length
                                                 )
-import           Data.List                      ( unfoldr )
 import qualified Data.Text                     as T
-
+import           Data.List                      ( unfoldr )
 import           Data.Bson                      ( val
                                                 , (=:)
                                                 )
-
-
+import           Data.HVect              hiding ( length
+                                                , (!!)
+                                                )
 import           Data.Time.Clock
 import           Model                          ( User(..)
                                                 , Lobby(..)
                                                 )
 import           Model.Utils
-import           Web.Spock.Config
 import           Control.Monad.Trans
-import           Data.HVect              hiding ( length
-                                                , (!!)
-                                                )
-import           Responses
-import           Network.HTTP.Types             ( badRequest400 )
-
 import           Controller.Lobby               ( findLobbyById
                                                 , generateSalt
                                                 )
 
--- TODO check if salt is already in use
 
 
-{-
-@api POST {{base_url}}/lobby/create create
-@apiName create
-@apiGroup Lobby
-@apiDescription create a new Lobby
--}
+ {-
+  @api {get} {{base_url}}/lobby/create create Lobby
+  @apiName create 
+  @apiGroup Lobby
+  @apiHeader {String} auth Users auth Token.
+  @apiDescription create a new Lobby
+ -}
 createLobby :: (MonadIO m, ListContains n User xs) => ActionCtxT (HVect xs) m b
 createLobby = do
   oldCtx <- getContext
@@ -67,10 +64,11 @@ createLobby = do
 
 
 {-
-@api GET {{base_url}}/lobby/find find
+@api {get} {{base_url}}/lobby/find find Lobbys 
 @apiName find
 @apiGroup Lobby
-@apiDescription find all public lobbys
+@apiDescription find all public lobbys of the last hour
+@apiHeader {String} auth Users auth Token.
 -}
 findLobbys :: (MonadIO m, ListContains n User xs) => ActionCtxT (HVect xs) m b
 findLobbys = do
@@ -90,10 +88,13 @@ findLobbys = do
   json $ sucessJson sucessCode lobbys
 
 {-
-@api POST {{base_url}}/lobby/join/:salt join
+@api {post} {{base_url}}/lobby/join/:salt join Lobby
 @apiName join 
 @apiGroup Lobby
-@apiDescription join a lobby by a salt
+@apiParam {String} salt Unique salt of the lobby
+@apiHeader {String} auth Users auth Token.
+@apiDescription join a lobby by a given salt
+
 -}
 joinLobby
   :: (MonadIO m, ListContains n User xs) => String -> ActionCtxT (HVect xs) m b
@@ -164,9 +165,11 @@ joinLobby salt = do
     return (Right newLobby)
 
 {-
-@api POST {{base_url}}/lobby/:lobbyId/leave leave
+@api {post} {{base_url}}/lobby/:lobbyId/leave leave Lobby
 @apiName leave 
 @apiGroup Lobby
+@apiParam {String} lobbyId UUID of the Lobby
+@apiHeader {String} auth Users auth Token
 @apiDescription leave a lobby you have joined previously 
 -}
 leaveLobby
@@ -203,9 +206,12 @@ leaveLobby lobbyId = do
     return (Right newLobby)
 
 {-
-@api POST {{base_url}}/lobby/:lobbyId/kick/:userId kick
+@api {post} {{base_url}}/lobby/:lobbyId/kick/:userId kick from Lobby
 @apiName kick 
 @apiGroup Lobby
+@apiParam {String} lobbyId UUID of the lobby you are host
+@apiParam {String} userId UUID of the user you want to kick 
+@apiHeader {String} auth Users auth Token
 @apiDescription kick a player from the Lobby (host is allowed only)
 -}
 kickPlayer
@@ -260,9 +266,11 @@ kickPlayer lobbyId playerId = do
 
 
 {-
-@api POST {{base_url}}/lobby/:lobbyId/status status
+@api {post} {{base_url}}/lobby/:lobbyId/status Lobby status
 @apiName status 
 @apiGroup Lobby
+@apiParam {String} lobbyId Id of the current Lobby
+@apiHeader {String} auth Users auth Token.
 @apiDescription get the status of the current lobby (in case you are a part of it)
 -}
 getStatus
@@ -282,9 +290,11 @@ getStatus lobbyId = do
       else return (Right lobby)
 
 {-
-@api POST {{base_url}}/lobby/:lobbyId/launch launch
+@api {post} {{base_url}}/lobby/:lobbyId/launch launch Game
 @apiName launch 
 @apiGroup Lobby
+@apiParam {String} lobbyId Id of the current Lobby 
+@apiHeader {String} auth Users auth Token.
 @apiDescription launch a game (players must be 4<=p<=6)
 -}
 launchGame
