@@ -4,7 +4,7 @@ setup_git() {
   git config --global user.email "travis@travis-ci.org"
   git config --global user.name "Travis CI"
   git remote add origin https://travis:${GH_ACESS_TOKEN}@github.com/daehiff/hanabi-backend.git > /dev/null 2>&1
-  git checkout -b $TRAVIS_BRANCH 
+  #git checkout -b $TRAVIS_BRANCH 
   git pull origin $TRAVIS_BRANCH 
 }
 
