@@ -51,15 +51,12 @@ runApp = do
 
 app :: App ()
 app = do
-{-   middleware (staticPolicy (addBase "static")) $ do
-      get "/doc" $ do
-        file (T.pack "") "./static/doc/index.html"   -}
-  prehook initHook $ do 
+  prehook initHook $ do
     middleware (staticPolicy (addBase "./static/doc"))
+    get root $ do
+      file (T.pack "") "./static/landingPage.html"
     get "/doc" $ do
       file (T.pack "") "./static/doc/index.html"
-    get root $ do
-        file (T.pack "") "./static/landingPage.html"
     post "/auth/login" $ loginHandle
     post "/auth/register" $ registerHandle
     prehook authHook $ prehook updateJWTHook $ do
