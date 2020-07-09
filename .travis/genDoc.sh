@@ -14,7 +14,7 @@ generate_doc() {
 upload_files() {
   git add static/doc
   git commit -m "Travis build: $TRAVIS_BUILD_NUMBER"
-  git push origin master
+  git push
 }
 
 
