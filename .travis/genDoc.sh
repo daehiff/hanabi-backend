@@ -12,6 +12,7 @@ generate_doc() {
 }
 
 upload_files() {
+  git checkout -b $TRAVIS_BRANCH 
   git add static/doc
   git commit -m "Travis build: $TRAVIS_BUILD_NUMBER"
   git remote rm origin
