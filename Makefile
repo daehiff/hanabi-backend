@@ -11,4 +11,4 @@ ghci:
 
 
 doc:
-	 apidoc -i src/ -o static/doc/ -f "[A-z]*\.hs" --parse-languages .hs=$HOME/haskell.js
+	 apidoc -i src/ -o static/doc/ -f "[A-z]*\.hs" --parse-languages .hs=./haskell.js

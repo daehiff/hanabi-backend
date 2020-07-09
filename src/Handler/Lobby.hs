@@ -290,7 +290,7 @@ getStatus lobbyId = do
       else return (Right lobby)
 
 {-
-@api {post} {{base_url}}/lobby/:lobbyId/launch launch Game
+@api {post} {{base_url}}/lobby/:lobbyId/launch launch Gamee
 @apiName launch 
 @apiGroup Lobby
 @apiParam {String} lobbyId Id of the current Lobby 

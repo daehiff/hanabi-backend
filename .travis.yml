@@ -26,7 +26,7 @@ before_install:
 matrix:
   include:
     - stage: "Generate Doc"
-      script: 
+      script: ./.travis/genDoc.sh 
     - stage: "Build & Test" 
       name: "Build & Test"
       if: branch = master

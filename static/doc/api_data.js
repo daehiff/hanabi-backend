@@ -131,7 +131,7 @@ define({ "api": [
   {
     "type": "post",
     "url": "{{base_url}}/lobby/:lobbyId/launch",
-    "title": "launch Game",
+    "title": "launch Gamee",
     "name": "launch",
     "group": "Lobby",
     "parameter": {
