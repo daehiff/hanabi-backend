@@ -52,6 +52,14 @@ To acesss a project wide ghci, you can run:
 make ghci
 ```
 
+## Documentation
+
+For creating documentation apidoc.js is used (https://apidocjs.com/).
+
+Install it in case you want to create documentation.
+
+To create documentation, use `make doc`
+
 ## ENVIROMENT
 
 The backend needs to be configured, by a .env file before running create a file `.env`:

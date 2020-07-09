@@ -4,3 +4,5 @@
 *.cabal
 *.yaml.lock
 .stack-work
+
+.DS-Store
