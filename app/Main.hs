@@ -2,11 +2,12 @@ module Main where
 
 import           Init                           ( runApp )
 
-import           Web.Spock
-import           Web.Spock.Config
-import Network.Wai.Middleware.Static
-import           Database.MongoDB
-import           Text.Read                      ( readMaybe )
-import Data.Word (Word32(..))
+
+import Model
+import Model.Utils
+
 main :: IO ()
 main = runApp
+
+
+ 
