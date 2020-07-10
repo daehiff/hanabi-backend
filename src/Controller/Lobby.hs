@@ -29,3 +29,5 @@ findLobbyById lobbyId = do
     (Just lobby) -> return (Right lobby)
 
 
+
+-- $> findById "5f084de2c3b5a04c44000005" :: IO (Maybe Lobby)

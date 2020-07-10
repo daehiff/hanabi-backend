@@ -30,38 +30,59 @@ import           Control.Monad.Trans
 import           Controller.Lobby               ( findLobbyById
                                                 , generateSalt
                                                 )
+import           Controller.Utils               ( parseBody )
+import           Data.ByteString.Lazy           ( fromStrict
+                                                , toStrict
+                                                , ByteString
+                                                )
 
-
+import           Data.Aeson.Types               ( Parser
+                                                , (.:)
+                                                )
 
  {-
-  @api {get} {{base_url}}/lobby/create create Lobby
+  @api {post} {{base_url}}/lobby/create create Lobby
   @apiName create 
   @apiGroup Lobby
   @apiHeader {String} auth Users auth Token.
   @apiDescription create a new Lobby
+  @apiErrorExample {json} Sample Input
+{
+  "public": false
+}
  -}
 createLobby :: (MonadIO m, ListContains n User xs) => ActionCtxT (HVect xs) m b
 createLobby = do
-  oldCtx <- getContext
-  let host :: User = (findFirst oldCtx)
-  let (Key _id)    = uid host
-  now  <- liftIO getCurrentTime
-  salt <- liftIO generateSalt
-  let public   = True
-  let launched = False
-  let lobbyC = Lobby { lid          = NewKey
-                     , lobbyHost    = _id
-                     , player       = []
-                     , kickedPlayer = []
-                     , created      = now
-                     , gameId       = Nothing
-                     , salt         = salt
-                     , public       = public
-                     , launched     = launched
-                     }
-  lobby <- liftIO $ insertObject lobbyC
-  json $ sucessJson sucessCode lobby
-
+  oldCtx     <- getContext
+  rawBodyStr <- fromStrict <$> body
+  let epublic = parseBody
+        rawBodyStr
+        (\obj -> do
+          isPublic <- (obj .: "public") :: Parser Bool
+          return isPublic
+        )
+  case epublic of
+    (Left error) -> do
+      setStatus badRequest400
+      json $ errorJson errorCreateLobby error
+    (Right public) -> do
+      let host :: User = (findFirst oldCtx)
+      let (Key _id)    = uid host
+      now  <- liftIO getCurrentTime
+      salt <- liftIO generateSalt
+      let launched = False
+      let lobbyC = Lobby { lid          = NewKey
+                         , lobbyHost    = _id
+                         , player       = []
+                         , kickedPlayer = []
+                         , created      = now
+                         , gameId       = Nothing
+                         , salt         = salt
+                         , public       = public
+                         , launched     = launched
+                         }
+      lobby <- liftIO $ insertObject lobbyC
+      json $ sucessJson sucessCode lobby
 
 {-
 @api {get} {{base_url}}/lobby/find find Lobbys 
@@ -180,6 +201,7 @@ leaveLobby lobbyId = do
   elobby <-
     liftIO
     $   findLobbyById lobbyId
+    >>= isHost user
     >>= checkPlayerIsInLobby user
     >>= updateLobby user
   case elobby of
@@ -188,13 +210,21 @@ leaveLobby lobbyId = do
       json $ errorJson errorJoinLobby error
     (Right lobby) -> json $ sucessJson sucessCode lobby
  where
+  isHost :: User -> Either String Lobby -> IO (Either String Lobby)
+  isHost _ (Left error) = return (Left error)
+  isHost user (Right lobby) =
+    let (Key _id) = uid user
+    in  if _id == lobbyHost lobby
+          then (return (Left "You as a host cannot leave your lobby."))
+          else (return (Right lobby))
+
   checkPlayerIsInLobby
     :: User -> Either String Lobby -> IO (Either String Lobby)
   checkPlayerIsInLobby _ (Left error) = return (Left error)
   checkPlayerIsInLobby user (Right lobby) =
     let (Key _id) = uid user
     in  if not $ _id `elem` player lobby
-          then return (Left "You are not part of this lobby")
+          then return (Left "You did not join this lobby or you already left.")
           else return (Right lobby)
 
   updateLobby :: User -> Either String Lobby -> IO (Either String Lobby)
@@ -260,13 +290,16 @@ kickPlayer lobbyId playerId = do
   updateLobby :: String -> (Either String Lobby) -> IO (Either String Lobby)
   updateLobby _      (Left  error) = return (Left error)
   updateLobby userId (Right lobby) = do
-    let newLobby = lobby { player = [ x | x <- (player lobby), x /= userId ] }
+    let newLobby = lobby { player = [ x | x <- (player lobby), x /= userId ]
+                         , kickedPlayer = userId : (kickedPlayer lobby)
+                         }
+
     updateObject newLobby
     return (Right newLobby)
 
 
 {-
-@api {post} {{base_url}}/lobby/:lobbyId/status Lobby status
+@api {get} {{base_url}}/lobby/:lobbyId/status Lobby status
 @apiName status 
 @apiGroup Lobby
 @apiParam {String} lobbyId Id of the current Lobby
@@ -280,12 +313,14 @@ getStatus lobbyId = do
   let user :: User = (findFirst oldCtx)
   let (Key userId) = uid user
   eLobby <- liftIO $ findLobbyById lobbyId >>= isInLobby userId
-  text $ T.pack $ show eLobby
+  case eLobby of
+    (Left  error) -> json $ errorJson errorJoinLobby error
+    (Right lobby) -> json $ sucessJson sucessCode lobby
  where
   isInLobby :: String -> Either String Lobby -> IO (Either String Lobby)
   isInLobby _      (Left  error) = return (Left error)
   isInLobby userId (Right lobby) = do
-    if not $ userId `elem` (player lobby)
+    if not $ userId `elem` ((lobbyHost lobby) : (player lobby))
       then return (Left "You are not a memeber of this lobby")
       else return (Right lobby)
 
@@ -311,15 +346,16 @@ launchGame lobbyId = do
   areEnoughPlayer :: Either String Lobby -> IO (Either String Lobby)
   areEnoughPlayer (Left  error) = return (Left error)
   areEnoughPlayer (Right lobby) = do
-    if (length (player lobby)) < 4
-      then return (Left "To few player.")
+    if (length ((lobbyHost lobby) : player lobby)) < 4
+      then return (Left "To few player in the Lobby.")
       else do
         if ((length (player lobby)) > 6)
-          then return (Left "To mucg player.")
+          then return (Left "To much player are in the Lobby.")
           else return (Right lobby)
   updateLobby :: Either String Lobby -> IO (Either String Lobby)
   updateLobby (Left  error) = return (Left error)
   updateLobby (Right lobby) = do
+    -- TODO create new game ect. :)
     let newLobby = lobby { launched = True }
     updateObject newLobby
     return (Right newLobby)

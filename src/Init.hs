@@ -33,11 +33,7 @@ import           Handler.Auth                   ( loginHandle
                                                 , registerHandle
                                                 )
 
-import           Handler.Lobby                  ( createLobby
-                                                , joinLobby
-                                                , findLobbys
-                                                , joinLobby
-                                                )
+import           Handler.Lobby
 
 
 type App ctx = Web.Spock.Core.SpockCtxT ctx (WebStateM () () ()) ()
@@ -60,9 +56,14 @@ app = do
     post "/auth/login" $ loginHandle
     post "/auth/register" $ registerHandle
     prehook authHook $ prehook updateJWTHook $ do
+      -- Lobby Routes
       post "/lobby/create" $ createLobby
       get ("/lobby/find") findLobbys
       post ("/lobby/join" <//> var) $ joinLobby
+      post ("/lobby/" <//> var <//> "leave") $ leaveLobby
+      post ("/lobby" <//> var <//> "kick" <//> var) $ kickPlayer
+      get ("/lobby" <//> var <//> "status") $ getStatus
+      post ("/lobby" <//> var <//> "launch") $ launchGame
 
 
 cardHandler :: MonadIO m => String -> ActionCtxT ctx m b

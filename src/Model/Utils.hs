@@ -19,6 +19,7 @@ import qualified Data.Text                     as T
 import           System.Environment             ( getEnv )
 import           Model.BSONExtention
 ------------------------------------------------------------------
+import           Text.Read                      ( readMaybe )
 
 
 instance (Val a, Val b) => Val (Either a b) where
@@ -84,7 +85,11 @@ class (ToBSON a, FromBSON a) => MongoObject a where {-MUST DEFINE: insertId, col
   Note: that in order to find the correct object, a typecast is necessary
   -}
   findById:: String -> IO (Maybe a)
-  findById id = findObject [T.pack ("_id") =: ObjId (read id)]
+  findById id =
+    let mobjId = readMaybe id :: Maybe ObjectId
+    in
+      findObject [T.pack ("_id") =: val mobjId]
+
 
   {- 
   Find a certaint object by a custom selector:

@@ -39,6 +39,7 @@ import           Control.Lens.Internal.ByteString
                                                 ( unpackStrict8 )
 import           Network.HTTP.Types             ( badRequest400 )
 import           Model.Utils
+import           Controller.Utils               ( parseBody )
 
 -- TODO generic secret for jwt
 
@@ -166,13 +167,6 @@ registerHandle = do
     insertedUser <- insertObject user
     return (Right insertedUser)
 
-
-parseBody :: ByteString -> (Object -> Parser b) -> Either String b
-parseBody rawBodyStr parseStrat = do
-  let (eResult) = (eitherDecode rawBodyStr) :: Either String Object
-  case eResult of
-    (Left  error ) -> (Left error)
-    (Right result) -> (flip parseEither result $ parseStrat)
 
 logUserIn :: User -> IO (User, T.Text)
 logUserIn user = do
