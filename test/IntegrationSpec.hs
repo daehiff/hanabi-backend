@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module IntegrationSpec where
 
 import           Test.Hspec
@@ -12,7 +14,9 @@ import           Web.Spock                      ( spock
                                                 )
 import           Web.Spock.Config
 ----------------------------------------------------------------
-import Integration.AuthTest (authTest)
+import           Integration.AuthTest           ( authTest )
+import           Integration.Lobby              ( lobbyTest )
+import           Utils                          ( testApp )
 
 beforeAll = do
   flushDB
@@ -20,10 +24,6 @@ beforeAll = do
 afterAll = do
   flushDB
 
-testApp :: IO Middleware
-testApp = do
-  spockCfg <- defaultSpockCfg () PCNoDatabase ()
-  spock spockCfg app
 
 main :: IO ()
 main = hspec spec
@@ -31,3 +31,10 @@ main = hspec spec
 spec :: Spec
 spec = with (spockAsApp testApp) $ do
   authTest
+  --lobbyTest
+  describe "whatever" $ do
+    it "does what i want" $ do
+      --app <- (spockAsApp testApp) 
+      --response <- (runWaiSession (post "/auth/login" "") app)
+      --putStrLn $ show $ response
+      (post "/auth/login" "") `shouldRespondWith` 400

@@ -4,7 +4,7 @@ module Integration.AuthTest where
 import           Test.Hspec
 import           Test.Hspec.Wai
 import           Data.ByteString.Lazy.Internal  ( ByteString )
-
+--import Test.Hspec.Core.Spec.Monad (SpecM)
 testUserRegister :: ByteString
 testUserRegister =
   "{\"email\":\"winderl13@gmail.com\",\"password\":\"supersaveandsecure\",\"username\":\"daehiff1\"}"
@@ -17,6 +17,8 @@ testUserLogin :: ByteString
 testUserLogin =
   "{\"email\":\"winderl13@gmail.com\",\"password\":\"supersaveandsecure\"}"
 
+
+--authTest:: SpecM ((), Application) ()
 authTest = do
   describe "POST /auth/register" $ do
     it "registers the user correctly" $ do

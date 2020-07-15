@@ -73,4 +73,6 @@ tests:
     dependencies:
       - Hanabi-Backend
       - hspec               # testing lib
+      - hspec-core
       - hspec-wai
+      - wai-extra

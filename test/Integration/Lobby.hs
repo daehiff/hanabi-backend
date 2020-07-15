@@ -1,10 +1,18 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Integration.Lobby where
 import           Test.Hspec
 import           Test.Hspec.Wai
+import           Network.Wai.Test               ( SResponse(..) )
+import           Network.HTTP.Types.Header
+import           Test.Hspec.Wai.Internal
 ------------------------------------------------------------
 import           Utils                          ( flushDB )
 import           Model
 import           Model.Utils
+import           Utils                          ( testApp )
+import           Web.Spock                      ( spockAsApp
+                                                )
 
 beforeAll = do
   flushDB
@@ -56,5 +64,15 @@ setupUsers = do
 
 getCurrentUsers = do
   usersFound_ <- findObjects [] [] :: IO [Maybe User]
-  return [user | (Just user) <- usersFound_]
+  return [ user | (Just user) <- usersFound_ ]
+
+
+lobbyTest = do
+  describe "whatever" $ do
+    it "does what i want" $ do
+      --app <- (spockAsApp testApp) 
+      --response <- (runWaiSession (post "/auth/login" "") app)
+      --putStrLn $ show $ response
+      (post "/auth/login" "") `shouldRespondWith` 400
+
 
