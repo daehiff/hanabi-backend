@@ -20,6 +20,7 @@ import           Network.HTTP.Types.Method      ( methodPost
                                                 , methodGet
                                                 )
 import           Data.ByteString.Lazy.Internal  ( ByteString )
+import           Data.ByteString.Internal       ( packChars )
 
 import           Data.Aeson                     ( decode
                                                 , encode
@@ -75,8 +76,15 @@ defaultUsers =
 
 setupUser user = do
   request <- request methodPost "auth/register" [] (userRegisterJSON user)
+  let (Right respUser) = parseBody
+        (simpleBody request)
+        (\obj -> do
+          sucess <- (obj .: "sucess") :: Parser Object
+          user   <- (sucess .: "message") :: Parser User
+          return user
+        )
   let jwt = unwrapJWT ((lookup "auth" (simpleHeaders request)))
-  return (user, jwt)
+  return (respUser, jwt)
 
 loginUser user = do
   request <- request methodPost "auth/login" [] (userLoginJSON user)
@@ -85,6 +93,15 @@ loginUser user = do
 
 createLobbyJSON :: Bool -> ByteString
 createLobbyJSON public = encode $ (object ["public" .= public])
+
+getLobbyFromResponse :: ByteString -> Either String Lobby
+getLobbyFromResponse bodyStr = parseBody
+  bodyStr
+  (\obj -> do
+    sucess <- (obj .: "sucess") :: Parser Object
+    lobby  <- (sucess .: "message") :: Parser Lobby
+    return lobby
+  )
 
 
 lobbyTest = before_ flushDB $ do
@@ -111,23 +128,35 @@ lobbyTest = before_ flushDB $ do
     it "finds all public lobbys" $ do
       let admin = defaultUsers !! 0
       (admin, jwt) <- setupUser admin
-      requestCL    <- (customPost "/lobby/create" [("auth", jwt)] (createLobbyJSON True))
-      let (Right lobby) =
-            (parseBody
-              (simpleBody requestCL)
-              (\obj -> do
-                sucess <- (obj .: "sucess") :: Parser Object
-                lobby <- (sucess .: "message") :: Parser Lobby
-                return lobby))
-      liftIO $ putStrLn (show lobby)
+      requestCL    <-
+        (customPost "/lobby/create" [("auth", jwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
       (customGet "/lobby/find" [("auth", jwt)] "")
         `shouldRespondWith` sucessResponse 200 sucessCode ([lobby] :: [Lobby])
-    it "hides private lobbys" $ do 
+    it "hides private lobbys" $ do
       let admin = defaultUsers !! 0
-      (admin, jwt) <- setupUser admin 
-      requestCL    <- (customPost "/lobby/create" [("auth", jwt)] (createLobbyJSON False))
+      (admin, jwt) <- setupUser admin
+      requestCL    <-
+        (customPost "/lobby/create" [("auth", jwt)] (createLobbyJSON False))
       (customGet "/lobby/find" [("auth", jwt)] "")
         `shouldRespondWith` sucessResponse 200 sucessCode ([] :: [Lobby])
+  describe "POST /lobby/join/:salt" $ do
+    it "allowes a single user to join" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key _id)     = uid user1
+      let lobbyJ        = lobby { player = [_id] }
+      customPost (packChars ("/lobby/join/" ++ salt lobby))
+                 [("auth", user1jwt)]
+                 ""
+        `shouldRespondWith` sucessResponse 200 sucessCode (lobbyJ :: Lobby)
+
+
 
 customPost = request methodPost
 customGet = request methodGet

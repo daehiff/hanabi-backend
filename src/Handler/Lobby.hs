@@ -133,9 +133,10 @@ joinLobby salt = do
     >>= checkHost user
     >>= userJoinLobby user
   case (elobby) of
-    (Left  error) -> json $ errorJson errorJoinLobby error
+    (Left  error) -> do
+      setStatus badRequest400 
+      json $ errorJson errorJoinLobby error
     (Right lobby) -> do
-      setStatus badRequest400
       json $ sucessJson sucessCode lobby
  where
   findLobbyBySalt :: String -> IO (Either String Lobby)

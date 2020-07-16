@@ -50,13 +50,13 @@ checkHeaderPresent headerName headers _ =
 
 checkResp :: ToJSON a => Int -> a -> [Header] -> Body -> Maybe String
 checkResp code expMsg _ body =
-  let jsonBody = (encode $ sucessJson code (expMsg))
-  in  if body == jsonBody
+  let jsonBody_ = (encode $ sucessJson code (expMsg))
+  in  if body == jsonBody_
         then Nothing
         else
           (Just
             (  "Error Matching Bodys. \nExpected: "
-            ++ (show jsonBody)
+            ++ (show jsonBody_)
             ++ "\nReceived: "
             ++ (show body)
             )
