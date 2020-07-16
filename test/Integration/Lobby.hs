@@ -141,7 +141,7 @@ lobbyTest = before_ flushDB $ do
       (customGet "/lobby/find" [("auth", jwt)] "")
         `shouldRespondWith` sucessResponse 200 sucessCode ([] :: [Lobby])
   describe "POST /lobby/join/:salt" $ do
-    it "allowes a single user to join" $ do
+    it "allows a single user to join" $ do
       let admin = defaultUsers !! 0
       (admin, adminjwt) <- setupUser admin
       let user1 = defaultUsers !! 1
@@ -155,8 +155,23 @@ lobbyTest = before_ flushDB $ do
                  [("auth", user1jwt)]
                  ""
         `shouldRespondWith` sucessResponse 200 sucessCode (lobbyJ :: Lobby)
+    it "catches invalid input" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      customPost (packChars ("/lobby/join/" ++ salt lobby))
+                 [("auth", adminjwt)]
+                 ""
+        `shouldRespondWith` errorResponse 400 errorJoinLobby ("You cannot join your own Lobby" :: String) 
 
-
+      customPost (packChars ("/lobby/join/stupid-salt")) [("auth", adminjwt)] ""
+        `shouldRespondWith` errorResponse
+                              400
+                              errorJoinLobby
+                              ("Could not find Lobby with salt: stupid-salt" :: String)
+  --describe "GET /lobby:lobbyId/status"
 
 customPost = request methodPost
 customGet = request methodGet
