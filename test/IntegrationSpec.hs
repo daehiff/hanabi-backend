@@ -14,7 +14,7 @@ import           Web.Spock                      ( spock
                                                 )
 import           Web.Spock.Config
 ----------------------------------------------------------------
-import           Integration.AuthTest           ( authTest )
+import           Integration.Auth           ( authTest )
 import           Integration.Lobby              ( lobbyTest )
 import           Utils                          ( testApp )
 

@@ -113,4 +113,4 @@ instance MongoObject Lobby where
   insertId id session = session { lid = Key (show id) }
 
 
--- > findById "5f038355c3b5a054e1000000":: IO (Maybe Lobby)
+-- $> :t encode 

@@ -1,11 +1,15 @@
+{-# LANGUAGE OverloadedStrings  #-}
+
 module Integration.Utils
   ( errorResponse
+  , sucessResponse
+  , unwrapJWT
   )
 where
 import           Test.Hspec
 import           Test.Hspec.Wai
 import           Data.ByteString.Lazy.Internal  ( ByteString )
-
+import qualified Data.ByteString.Internal      as BIB
 import           Data.Aeson                     ( decode
                                                 , encode
                                                 )
@@ -22,8 +26,15 @@ import qualified Data.ByteString.Char8         as BS
 errorResponse :: ToJSON a => Int -> Int -> a -> ResponseMatcher
 errorResponse httpStatus internalCode msg = ResponseMatcher
   { matchStatus  = httpStatus
-  , matchBody    = MatchBody (createCheckErrorResponse internalCode msg)
+  , matchBody    = MatchBody (checkErrorResp internalCode msg)
   , matchHeaders = []
+  }
+
+sucessResponse :: ToJSON a => Int -> Int -> a -> ResponseMatcher
+sucessResponse httpStatus internalCode msg = ResponseMatcher
+  { matchStatus  = httpStatus
+  , matchBody    = MatchBody (checkResp internalCode msg)
+  , matchHeaders = [MatchHeader (checkHeaderPresent "auth")]
   }
 
 checkHeaderPresent :: CI BS.ByteString -> [Header] -> Body -> Maybe String
@@ -34,9 +45,26 @@ checkHeaderPresent headerName headers _ =
           (Just ("Header: " ++ (show headerName) ++ "was not present:\n"))
         (Just hrdVal) -> Nothing
 
-createCheckErrorResponse
-  :: ToJSON a => Int -> a -> [Header] -> Body -> Maybe String
-createCheckErrorResponse code expMsg _ body =
+
+
+
+checkResp :: ToJSON a => Int -> a -> [Header] -> Body -> Maybe String
+checkResp code expMsg _ body =
+  let jsonBody = (encode $ sucessJson code (expMsg))
+  in  if body == jsonBody
+        then Nothing
+        else
+          (Just
+            (  "Error Matching Bodys. \nExpected: "
+            ++ (show jsonBody)
+            ++ "\nReceived: "
+            ++ (show body)
+            )
+          )
+
+
+checkErrorResp :: ToJSON a => Int -> a -> [Header] -> Body -> Maybe String
+checkErrorResp code expMsg _ body =
   let jsonBody = (encode $ errorJson code (expMsg))
   in  if body == jsonBody
         then Nothing
@@ -48,3 +76,8 @@ createCheckErrorResponse code expMsg _ body =
             ++ (show body)
             )
           )
+
+unwrapJWT :: Maybe BIB.ByteString -> BIB.ByteString
+unwrapJWT Nothing    = ""
+unwrapJWT (Just jwt) = jwt
+

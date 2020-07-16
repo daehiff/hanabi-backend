@@ -36,10 +36,12 @@ import           Data.ByteString.Lazy           ( fromStrict
                                                 , ByteString
                                                 )
 
+import           Data.Aeson                     ( encode )
 import           Data.Aeson.Types               ( Parser
                                                 , (.:)
                                                 )
 
+import           Controller.Utils               ( getCurretISOTime )
  {-
   @api {post} {{base_url}}/lobby/create create Lobby
   @apiName create 
@@ -68,7 +70,7 @@ createLobby = do
     (Right public) -> do
       let host :: User = (findFirst oldCtx)
       let (Key _id)    = uid host
-      now  <- liftIO getCurrentTime
+      now  <- liftIO getCurretISOTime
       salt <- liftIO generateSalt
       let launched = False
       let lobbyC = Lobby { lid          = NewKey
@@ -97,8 +99,8 @@ findLobbys = do
   let host :: User = (findFirst oldCtx)
   let (Key _id)    = uid host
 
-  now <- liftIO getCurrentTime
-  let past = addUTCTime (-60 * 60 :: NominalDiffTime) now
+  now <- liftIO getCurretISOTime
+  let past = addUTCTime (-60 * 60 :: NominalDiffTime) (now)
 
   mLobbys <-
     liftIO
@@ -106,7 +108,7 @@ findLobbys = do
                      [] :: IO [Maybe Lobby]
         )
   let lobbys = [ lobby | (Just lobby) <- mLobbys ]
-  json $ sucessJson sucessCode lobbys
+  json $ (sucessJson sucessCode lobbys)
 
 {-
 @api {post} {{base_url}}/lobby/join/:salt join Lobby
@@ -138,8 +140,8 @@ joinLobby salt = do
  where
   findLobbyBySalt :: String -> IO (Either String Lobby)
   findLobbyBySalt salt = do
-    now <- liftIO getCurrentTime
-    let past = addUTCTime (-60 * 60 :: NominalDiffTime) now
+    now <- liftIO getCurretISOTime
+    let past = addUTCTime (-60 * 60 :: NominalDiffTime) (now)
     mLobby <- liftIO
       (findObject ["created" =: ["$gte" =: val past], "salt" =: val salt] :: IO
           (Maybe Lobby)
@@ -359,4 +361,5 @@ launchGame lobbyId = do
     let newLobby = lobby { launched = True }
     updateObject newLobby
     return (Right newLobby)
+
 

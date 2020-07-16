@@ -33,7 +33,7 @@ import           Control.Monad.Trans
 import           Control.Monad                  ( liftM )
 
 import qualified Data.Text                     as T
-import           Data.Text.Encoding             ( encodeUtf8 )
+import           Data.Text.Encoding             ( encodeUtf8, decodeUtf8 )
 import           Data.ByteString.Lazy           ( fromStrict
                                                 , toStrict
                                                 )
@@ -44,7 +44,7 @@ import           Data.ByteString.Internal       ( ByteString )
 import           Responses                      ( errorJson
                                                 , authError
                                                 )
-
+import           Network.HTTP.Types             ( badRequest400 )
 {-
 SAP Stands for Session Authentication Payload
 All Data that is required by the user to send via JWT Token:
@@ -94,7 +94,7 @@ updateJWTHook = do
 sessionToJWT :: SAP -> IO T.Text
 sessionToJWT payload = do
   let (Right jwt) = hmacEncode HS384 "test" (toStrict (encode payload))
-  return (T.pack (show (unJwt jwt)))
+  return (decodeUtf8 (unJwt jwt))
 
 {-
 Auth hook that checks the users JWT
@@ -108,8 +108,10 @@ authHook = do
   unValidatedPayload <- liftIO $ convertPayloadToSAP rawPayload
   ePayload           <- liftIO $ validatePayload unValidatedPayload
   case ePayload of
-    (Left  errorMsg) -> json $ errorJson authError errorMsg
-    (Right payload ) -> return (user payload :&: payload :&: oldCtx)
+    (Left errorMsg) -> do
+      setStatus badRequest400
+      json $ errorJson authError errorMsg
+    (Right payload) -> return (user payload :&: payload :&: oldCtx)
  where
   getRawPayload :: Maybe T.Text -> IO (Either String ByteString)
   getRawPayload Nothing    = return (Left "Header: `auth` is missing")

@@ -1,6 +1,6 @@
-{-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
+{-# LANGUAGE OverloadedStrings  #-}
 
-module Integration.AuthTest where
+module Integration.Auth where
 import           Test.Hspec
 import           Test.Hspec.Wai
 import           Data.ByteString.Lazy.Internal  ( ByteString )
