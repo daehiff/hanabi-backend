@@ -31,10 +31,5 @@ main = hspec spec
 spec :: Spec
 spec = with (spockAsApp testApp) $ do
   authTest
-  --lobbyTest
-  describe "whatever" $ do
-    it "does what i want" $ do
-      --app <- (spockAsApp testApp) 
-      --response <- (runWaiSession (post "/auth/login" "") app)
-      --putStrLn $ show $ response
-      (post "/auth/login" "") `shouldRespondWith` 400
+  lobbyTest
+

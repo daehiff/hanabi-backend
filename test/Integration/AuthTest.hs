@@ -1,60 +1,84 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
 
 module Integration.AuthTest where
 import           Test.Hspec
 import           Test.Hspec.Wai
 import           Data.ByteString.Lazy.Internal  ( ByteString )
---import Test.Hspec.Core.Spec.Monad (SpecM)
-testUserRegister :: ByteString
-testUserRegister =
-  "{\"email\":\"winderl13@gmail.com\",\"password\":\"supersaveandsecure\",\"username\":\"daehiff1\"}"
+import           Model
+import           Model.Utils                    ( ObjectKey(..) )
+import           Data.Aeson                     ( decode
+                                                , encode
+                                                )
+import           Data.Aeson.Types        hiding ( String
+                                                , Key
+                                                )
+import           Responses
+import           Integration.Utils
+import           Utils                          ( flushDB )
 
-errorRegsiter :: ByteString
-errorRegsiter =
-  "{\"email\"\"winderl13@gmail.com\",\"password\":\"supersaveandsecure\",\"username\":\"daehiff1\"}"
-
-testUserLogin :: ByteString
-testUserLogin =
-  "{\"email\":\"winderl13@gmail.com\",\"password\":\"supersaveandsecure\"}"
+beforeEach = do
+  flushDB
+  return ()
 
 
---authTest:: SpecM ((), Application) ()
-authTest = do
+testUser :: User
+testUser = User { uid           = NewKey
+                , username      = "daehiff"
+                , email         = "mail@mailprovider.com"
+                , password_hash = Just "supersaveandsecure"
+                , sessions      = []
+                }
+
+userRegisterJSON :: User -> ByteString
+userRegisterJSON user =
+  let (Just pw) = password_hash user
+  in
+    encode
+      $ (object
+          ["email" .= email user, "password" .= pw, "username" .= username user]
+        )
+
+userLoginJSON :: User -> ByteString
+userLoginJSON user =
+  let (Just pw) = password_hash user
+  in  encode $ (object ["email" .= email user, "password" .= pw])
+
+
+authTest = (before_ beforeEach) $ do
   describe "POST /auth/register" $ do
     it "registers the user correctly" $ do
-      post "/auth/register" testUserRegister `shouldRespondWith` 200
-      let
-        errorResp
-          = "{\"error\":{\"code\":3,\"message\":\"user with this email already exists.\"},\"result\":\"failure\"}"
-      post "/auth/register" testUserRegister
-        `shouldRespondWith` errorResp { matchStatus = 400 }
-    it "filters Invalid responses" $ do
-      let
-        errorResp
-          = "{\"error\":{\"code\":3,\"message\":\"Error in $: Failed reading: satisfyWith. Expecting ':' at 'winderl13@gmail.com,password:supersaveandsecure,username:daehiff1}'\"},\"result\":\"failure\"}"
-      post "/auth/register" errorRegsiter
-        `shouldRespondWith` errorResp { matchStatus = 400 }
+      --request <- post "/auth/register" (userRegisterJSON testUser)
+      --mString <- checkUser (simpleHeaders request) (simpleBody request) 
+      post "/auth/register" (userRegisterJSON testUser) `shouldRespondWith` 200
+    it "gives correct and expected error messages" $ do
+      post "/auth/register" (userRegisterJSON testUser) `shouldRespondWith` 200
+      post "/auth/register"
+           (userRegisterJSON testUser { username = "mail1@mailprovider.com" })
+        `shouldRespondWith` errorResponse
+                              400
+                              registrationError
+                              ("user with this email already exists." :: String)
+      post "/auth/register"
+           (userRegisterJSON testUser { email = "mail1@mailprovider.com" })
+        `shouldRespondWith` errorResponse
+                              400
+                              registrationError
+                              ("Username is already taken." :: String)
   describe "POST /auth/login" $ do
-    it "logs the user in" $ do
-      post "/auth/login" testUserLogin `shouldRespondWith` 200
-    it "checks wrong credentials" $ do
-      let
-        wrongUserPassword
-          = "{\"email\":\"winderl13@gmail.com\",\"password\":\"supersaveandsecuree\"}"
-      let
-        wrongUserEmail
-          = "{\"email\":\"winderl14@gmail.com\",\"password\":\"supersaveandsecure\"}"
-      post "/auth/login" wrongUserPassword
-        `shouldRespondWith` "{\"error\":{\"code\":2,\"message\":\"invalid password\"},\"result\":\"failure\"}"
-                              { matchStatus = 400
-                              }
-      post "/auth/login" wrongUserEmail
-        `shouldRespondWith` "{\"error\":{\"code\":2,\"message\":\"User not avaiable\"},\"result\":\"failure\"}"
-                              { matchStatus = 400
-                              }
-    it "filters Invalid responses" $ do
-      let
-        errorResp
-          = "{\"error\":{\"code\":2,\"message\":\"Error in $: Failed reading: satisfyWith. Expecting ':' at 'winderl13@gmail.com,password:supersaveandsecure,username:daehiff1}'\"},\"result\":\"failure\"}"
-      post "/auth/login" errorRegsiter
-        `shouldRespondWith` errorResp { matchStatus = 400 }
+    it "allows registered users to login" $ do
+      request <- post "/auth/register" (userRegisterJSON testUser)
+      post "/auth/login" (userLoginJSON testUser) `shouldRespondWith` 200
+    it "detects invalid usernames and passwords" $ do
+      request <- post "/auth/register" (userRegisterJSON testUser)
+      post "/auth/login"
+           (userLoginJSON testUser { password_hash = Just "wrongpassword" })
+        `shouldRespondWith` errorResponse
+                              400
+                              loginError
+                              ("invalid password" :: String)
+      post "/auth/login" (userLoginJSON testUser { email = "wrong@mail.com" })
+        `shouldRespondWith` errorResponse
+                              400
+                              loginError
+                              ("User not avaiable" :: String)
+

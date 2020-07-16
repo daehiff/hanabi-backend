@@ -47,6 +47,7 @@ extra-deps:
   - AesonBson-0.4.0
   - pwstore-purehaskell-2.1.4
   - hspec-core-2.7.1
+  - hspec-wai-json-0.10.1
 
 # - acme-missiles-0.3
 # - git: https://github.com/commercialhaskell/stack.git

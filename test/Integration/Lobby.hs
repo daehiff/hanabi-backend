@@ -67,12 +67,9 @@ getCurrentUsers = do
   return [ user | (Just user) <- usersFound_ ]
 
 
-lobbyTest = do
+lobbyTest = before_ flushDB $ do
   describe "whatever" $ do
     it "does what i want" $ do
-      --app <- (spockAsApp testApp) 
-      --response <- (runWaiSession (post "/auth/login" "") app)
-      --putStrLn $ show $ response
       (post "/auth/login" "") `shouldRespondWith` 400
 
 

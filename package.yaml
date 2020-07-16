@@ -76,3 +76,6 @@ tests:
       - hspec-core
       - hspec-wai
       - wai-extra
+      - hspec-wai-json
+      - case-insensitive
+      - regex-compat
