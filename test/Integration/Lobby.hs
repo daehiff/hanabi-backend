@@ -164,14 +164,18 @@ lobbyTest = before_ flushDB $ do
       customPost (packChars ("/lobby/join/" ++ salt lobby))
                  [("auth", adminjwt)]
                  ""
-        `shouldRespondWith` errorResponse 400 errorJoinLobby ("You cannot join your own Lobby" :: String) 
+        `shouldRespondWith` errorResponse
+                              400
+                              errorJoinLobby
+                              ("You cannot join your own Lobby" :: String)
 
       customPost (packChars ("/lobby/join/stupid-salt")) [("auth", adminjwt)] ""
         `shouldRespondWith` errorResponse
                               400
                               errorJoinLobby
-                              ("Could not find Lobby with salt: stupid-salt" :: String)
-  describe "POST /lobby/:lobbyId/leave" $ do 
+                              ("Could not find Lobby with salt: stupid-salt" :: String
+                              )
+  describe "POST /lobby/:lobbyId/leave" $ do
     it "allows joined users to leave" $ do
       let admin = defaultUsers !! 0
       (admin, adminjwt) <- setupUser admin
@@ -188,7 +192,7 @@ lobbyTest = before_ flushDB $ do
       customPost (packChars ("/lobby/" ++ lobbyId ++ "/leave"))
                  [("auth", user1jwt)]
                  ""
-        `shouldRespondWith` sucessResponse 200 sucessCode (lobby :: Lobby) 
+        `shouldRespondWith` sucessResponse 200 sucessCode (lobby :: Lobby)
     it "catches invalid input" $ do
       let admin = defaultUsers !! 0
       (admin, adminjwt) <- setupUser admin
@@ -200,19 +204,60 @@ lobbyTest = before_ flushDB $ do
       let (Key _id)     = uid user1
       let (Key lobbyId) = lid lobby
       customPost (packChars ("/lobby/join/" ++ salt lobby))
-            [("auth", user1jwt)]
-            ""
+                 [("auth", user1jwt)]
+                 ""
       customPost (packChars ("/lobby/" ++ "invalidID" ++ "/leave"))
-            [("auth", user1jwt)]
-            ""
-        `shouldRespondWith` errorResponse 400 errorJoinLobby ("Lobby not found" :: String) 
+                 [("auth", user1jwt)]
+                 ""
+        `shouldRespondWith` errorResponse 400
+                                          errorJoinLobby
+                                          ("Lobby not found" :: String)
       customPost (packChars ("/lobby/" ++ lobbyId ++ "/leave"))
                  [("auth", user1jwt)]
                  ""
       customPost (packChars ("/lobby/" ++ lobbyId ++ "/leave"))
+                 [("auth", user1jwt)]
+                 ""
+        `shouldRespondWith` errorResponse
+                              400
+                              errorJoinLobby
+                              ("You did not join this lobby or you already left." :: String
+                              )
+  describe "POST /lobby/:lobbyId/kick/:userId" $ do
+    it "kicks player and does not allow him to join" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key _id)     = uid user1
+      let (Key lobbyId) = lid lobby
+      let lobbyK        = lobby { kickedPlayer = [_id] }
+      customPost (packChars ("/lobby/join/" ++ salt lobby))
+                 [("auth", user1jwt)]
+                 ""
+      customPost (packChars ("/lobby/" ++ lobbyId ++ "/kick/" ++ _id))
+                 [("auth", adminjwt)]
+                 ""
+        `shouldRespondWith` sucessResponse 200 sucessCode (lobbyK :: Lobby)
+      customPost (packChars ("/lobby/join/" ++ salt lobby))
             [("auth", user1jwt)]
             ""
-        `shouldRespondWith` errorResponse 400 errorJoinLobby ("You did not join this lobby or you already left." :: String) 
+        `shouldRespondWith` errorResponse 400 errorJoinLobby ("You have been kicked from this lobby" :: String)
+  describe "GET /lobby/:lobbyId/status" $ do 
+    it "descibes the status of the current Lobby" $ do 
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key lobbyId) = lid lobby
+      customGet (packChars ("/lobby/" ++ lobbyId ++ "/status"))
+                 [("auth", adminjwt)]
+                 ""
+        `shouldRespondWith` sucessResponse 200 sucessCode (lobby :: Lobby) 
 customPost = request methodPost
 customGet = request methodGet
 
