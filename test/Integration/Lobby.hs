@@ -171,8 +171,48 @@ lobbyTest = before_ flushDB $ do
                               400
                               errorJoinLobby
                               ("Could not find Lobby with salt: stupid-salt" :: String)
-  --describe "GET /lobby:lobbyId/status"
-
+  describe "POST /lobby/:lobbyId/leave" $ do 
+    it "allows joined users to leave" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key _id)     = uid user1
+      let (Key lobbyId) = lid lobby
+      customPost (packChars ("/lobby/join/" ++ salt lobby))
+                 [("auth", user1jwt)]
+                 ""
+      customPost (packChars ("/lobby/" ++ lobbyId ++ "/leave"))
+                 [("auth", user1jwt)]
+                 ""
+        `shouldRespondWith` sucessResponse 200 sucessCode (lobby :: Lobby) 
+    it "catches invalid input" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key _id)     = uid user1
+      let (Key lobbyId) = lid lobby
+      customPost (packChars ("/lobby/join/" ++ salt lobby))
+            [("auth", user1jwt)]
+            ""
+      customPost (packChars ("/lobby/" ++ "invalidID" ++ "/leave"))
+            [("auth", user1jwt)]
+            ""
+        `shouldRespondWith` errorResponse 400 errorJoinLobby ("Lobby not found" :: String) 
+      customPost (packChars ("/lobby/" ++ lobbyId ++ "/leave"))
+                 [("auth", user1jwt)]
+                 ""
+      customPost (packChars ("/lobby/" ++ lobbyId ++ "/leave"))
+            [("auth", user1jwt)]
+            ""
+        `shouldRespondWith` errorResponse 400 errorJoinLobby ("You did not join this lobby or you already left." :: String) 
 customPost = request methodPost
 customGet = request methodGet
 
