@@ -31,6 +31,8 @@ import           Controller.Lobby               ( findLobbyById
                                                 , generateSalt
                                                 )
 
+import           Database.MongoDB               ( Pipe )
+import           Control.Monad.Trans.Reader     ( ReaderT )
 
 
  {-
@@ -40,7 +42,8 @@ import           Controller.Lobby               ( findLobbyById
   @apiHeader {String} auth Users auth Token.
   @apiDescription create a new Lobby
  -}
-createLobby :: (MonadIO m, ListContains n User xs) => ActionCtxT (HVect xs) m b
+
+createLobby :: (ListContains n User xs) => ActionCtxT (HVect xs)  ((ReaderT (Bool, Pipe) IO)) b
 createLobby = do
   oldCtx <- getContext
   let host :: User = (findFirst oldCtx)
@@ -59,9 +62,8 @@ createLobby = do
                      , public       = public
                      , launched     = launched
                      }
-  lobby <- liftIO $ insertObject lobbyC
+  lobby <- lift $ insertObject lobbyC
   json $ sucessJson sucessCode lobby
-
 
 {-
 @api {get} {{base_url}}/lobby/find find Lobbys 

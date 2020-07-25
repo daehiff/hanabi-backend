@@ -7,19 +7,30 @@ module Model.Utils
   , MongoObject(..)
   , FromBSON(..)
   , ToBSON(..)
+  , DBConf(..)
   , run
+  , run'
+  , setupDB
   )
 where
 
 import           Data.Aeson                     ( ToJSON()
                                                 , FromJSON(parseJSON)
                                                 )
-import           Database.MongoDB
+import           Database.MongoDB        hiding ( lookup )
 import qualified Data.Text                     as T
-import           System.Environment             ( getEnv )
+import           System.Environment             ( getEnv
+                                                , lookupEnv
+                                                )
 import           Model.BSONExtention
+import           Data.Maybe                     ( fromMaybe )
+
+import           Data.Pool                      ( createPool, Pool )
+import Control.Monad.Trans.Reader (ReaderT, ask)
 ------------------------------------------------------------------
 
+data DBConf = DBConf {hostUrl:: String, dbUser::String, dbPass::String, useReplica::Bool } 
+      deriving(Show)
 
 instance (Val a, Val b) => Val (Either a b) where
   val (Left  a) = val (True, a)
@@ -38,11 +49,54 @@ instance (Val a, Val b) => Val (a, b) where
   cast' _ = Nothing
 
 
+createDBConnection connData = do
+  let url = hostUrl connData
+  let username    = T.pack (dbUser connData)
+  let pass    = T.pack $ dbPass connData
+  replicaSet <- openReplicaSetSRV' url
+  pipe       <- primary replicaSet
+  auth       <- access pipe master (T.pack "admin") $ auth username pass
+  return (auth, pipe)
+
+
+
+setupDB connData = do
+  pool <- createPool (createDBConnection connData)
+                     (\(_, pipe) -> close pipe)
+                     1
+                     300
+                     5
+  return pool 
+
+run' :: Action (ReaderT (Bool, Pipe) IO) a -> ReaderT (Bool, Pipe) IO a
+run' act = do
+  (auth, pipe) <- ask
+  if auth 
+  then access pipe master (T.pack "db_name") act
+  else error "no access granted."
+
+
+run :: Action IO a -> IO a
 run act = do
-  host_addr <- (getEnv "DB_ADDR")
-  db_name   <- (getEnv "DB_NAME")
-  pipe      <- connect $ host host_addr
-  access pipe master (T.pack db_name) act
+  let host_addr = "x"
+  mUseReplica <- (lookupEnv "DB_USE_REPLICA")
+  db_name     <- (getEnv "DB_NAME")
+  let dbUser = T.pack "x" -- TODO sys envs
+  let dbPass = T.pack "x"
+  if mUseReplica == Nothing || mUseReplica == (Just "false")
+    then do -- local testing
+      pipe <- connect $ host host_addr
+      access pipe master (T.pack db_name) act
+    else do -- server with replica set
+      replicaSet <- openReplicaSetSRV' host_addr -- TODO this takes ages, would be great to have this lookup once at startup then never
+      pipe       <- primary replicaSet
+      auth       <- access pipe master (T.pack "admin") $ auth dbUser dbPass
+      if auth
+        then access pipe master (T.pack db_name) act
+        else error ("no access granted: ")
+      --closeReplicaSet replicaSet
+
+
 
 class (ToBSON a, FromBSON a) => MongoObject a where {-MUST DEFINE: insertId, collection (where the UID of the object is, whats the collection of the object-}
   insertId:: Show x => x -> a -> a
@@ -60,9 +114,9 @@ class (ToBSON a, FromBSON a) => MongoObject a where {-MUST DEFINE: insertId, col
   Insert a new (!) Mongo Object into the database 
   This will rais an error in case a object with an existing id will be inserted
   -}
-  insertObject:: a -> IO a
+  insertObject:: a ->  ReaderT (Bool, Pipe) IO a
   insertObject object = do
-    id <- run $ insert (collection (undefined::a)) (serialize object)
+    id <- run' $ insert (collection (undefined::a)) (serialize object)
     return (insertId id object)
 
   {-

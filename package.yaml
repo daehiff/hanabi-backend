@@ -41,6 +41,8 @@ dependencies:
   - lens
   - http-types
   - random
+  - resource-pool
+  - transformers
 
 library:
   source-dirs:

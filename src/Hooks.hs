@@ -44,7 +44,7 @@ import           Data.ByteString.Internal       ( ByteString )
 import           Responses                      ( errorJson
                                                 , authError
                                                 )
-
+import           Database.MongoDB (Pipe)
 {-
 SAP Stands for Session Authentication Payload
 All Data that is required by the user to send via JWT Token:
@@ -63,7 +63,7 @@ _getNow = (round . (* 1000)) <$> getPOSIXTime
 {-
 Base Hook returns HNil for initalisation
 -}
-initHook :: ActionCtxT () (WebStateM () () ()) (HVect '[])
+initHook :: ActionCtxT () (WebStateM (Bool, Pipe) () ()) (HVect '[])
 initHook = return HNil
 
 
