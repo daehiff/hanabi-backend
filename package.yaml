@@ -41,6 +41,9 @@ dependencies:
   - lens
   - http-types
   - random
+  - resource-pool
+  - transformers
+  - hslogger
 
 library:
   source-dirs:

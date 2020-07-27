@@ -1,9 +1,12 @@
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
+
 module Controller.Lobby where -- no control
 
 import Model
 import Model.Utils
 import           System.Random                  ( randomRIO )
-
+import Responses
+import Web.Spock (ActionCtxT)
 generateSalt :: IO String
 generateSalt = do
     adjectives <- getWords "./static/wordlist-adjectives.txt"
@@ -21,11 +24,12 @@ generateSalt = do
       return (lines contents)
 
 
-findLobbyById :: String -> IO (Either String Lobby)
+findLobbyById :: String -> ActionCtxT ctx (AppStateM sess) (Either String Lobby)
 findLobbyById lobbyId = do
-  mlobby <- findById lobbyId :: IO (Maybe Lobby)
+  (mlobby :: Maybe Lobby) <- findById lobbyId
   case mlobby of
     Nothing      -> return (Left "Lobby not found")
     (Just lobby) -> return (Right lobby)
 
 
+ 

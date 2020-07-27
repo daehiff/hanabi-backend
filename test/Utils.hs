@@ -6,8 +6,14 @@ import qualified Data.Text                     as T
 import           Database.MongoDB hiding (Key)
 import           Test.Hspec
 import           Model
-import Model.Utils (findObjects, insertObject, findById, run)
 import           System.Environment             ( getEnv )
+
+
+run act = do
+  host_addr <- (getEnv "DB_ADDR")
+  db_name   <- (getEnv "DB_NAME")
+  pipe      <- connect $ host host_addr
+  access pipe master (T.pack db_name) act
 
 flushDB :: IO ()
 flushDB  = dropDB >> return ()
