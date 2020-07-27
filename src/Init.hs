@@ -22,6 +22,7 @@ import           Model.Utils                    ( findObject
                                                 , findById
                                                 , setupDB
                                                 , DBConf(..)
+                                                , MongoObject(..)
                                                 )
 
 import           Data.HVect
@@ -36,12 +37,11 @@ import           Handler.Auth                   ( loginHandle
                                                 , registerHandle
                                                 )
 
-{- import           Handler.Lobby                  ( createLobby
+import           Handler.Lobby                  ( createLobby
                                                 , joinLobby
                                                 , findLobbys
                                                 , joinLobby
-                                                ) -}
-import           Model.Utils                    ( MongoObject(..) )
+                                                ) 
 import           Control.Monad.Trans.Reader     ( ReaderT
                                                 , ask
                                                 )
@@ -69,7 +69,7 @@ createConfig = do
                       , useReplica = useReplica
                       , dbName     = dbName
                       }
-  return AppConfig { dbConf = dbConf, port = 8080 }
+  return AppConfig { dbConf = dbConf, port = 8080, jwtSecret="psssst!" }
 
 runApp :: IO ()
 runApp = do
@@ -91,36 +91,12 @@ app = do
       file (T.pack "") "./static/doc/index.html"
     get root $ do
       file (T.pack "") "./static/landingPage.html"
-    --get "/test" sampleHandle
     post "/auth/login" $ loginHandle
     post "/auth/register" $ registerHandle
-{-     prehook authHook $ prehook updateJWTHook $ do
+    prehook authHook $ prehook updateJWTHook $ do
       post "/lobby/create" $ createLobby
       get ("/lobby/find") findLobbys
-      post ("/lobby/join" <//> var) $ joinLobby -}
-
-
-runDB
-  :: (MonadTrans t, MonadIO (t (AppStateM sess)))
-  => Action IO b
-  -> t (AppStateM sess) b
-runDB act = do
-  dbConfig <-
-    getState
-      >>= (\appCfg -> do
-            liftIO $ return $ dbConf appCfg
-          )
-  pool <- getSpockPool
-  liftIO $ withResource
-    pool
-    (\pipe -> access pipe master (T.pack (dbName dbConfig)) act)
-
-
-sampleHandle :: AppHandle () ()
-sampleHandle = do
-  pool <- getSpockPool
-  card <- (runDB (findOne $ select [] "cards"))
-  text $ T.pack (show card)
+      post ("/lobby/join" <//> var) $ joinLobby 
 
 
 

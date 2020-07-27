@@ -17,7 +17,7 @@ type AppHandle ctx a = SpockActionCtx ctx Pipe () AppConfig a
 
 type AppStateM sess = WebStateM Pipe sess AppConfig
 
-data AppConfig = AppConfig {dbConf:: DBConf, port::Int}
+data AppConfig = AppConfig {dbConf:: DBConf, port::Int, jwtSecret::String}
 
 data DBConf = DBConf {hostUrl:: String,
                       dbUser::String,

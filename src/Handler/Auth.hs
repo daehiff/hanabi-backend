@@ -62,7 +62,7 @@ logUserIn user = do
                     , sessionid = sessionId
                     , ttl       = now + 15 * 60 * 1000
                     }
-  jwt <- liftIO $ sessionToJWT payload
+  jwt <-  sessionToJWT payload
   return (logedInUser, jwt)
 
 {-

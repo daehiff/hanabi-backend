@@ -8,7 +8,6 @@ module Model.Utils
   , FromBSON(..)
   , ToBSON(..)
   , DBConf(..)
-  , run
   , setupDB
   )
 where
@@ -69,10 +68,23 @@ setupDB connData = do
     let url      = hostUrl connData
     let username = T.pack (dbUser connData)
     let pass     = T.pack $ dbPass connData
-    replicaSet <- openReplicaSetSRV' url
-    pipe       <- primary replicaSet
-    auth       <- access pipe master (T.pack "admin") $ auth username pass
-    if auth then return pipe else error "unable to auth database"
+    if useReplica connData
+      then do
+        replicaSet <- openReplicaSetSRV' url
+        pipe       <- primary replicaSet
+        auth       <- access pipe master (T.pack "admin") $ auth username pass
+        if auth then return pipe else error "unable to auth database"
+      else do
+        pipe <- connect $ host url
+        if username == ""
+          then return pipe
+          else do
+            auth <- access pipe master (T.pack "admin") $ auth username pass
+            if auth 
+            then 
+              return pipe 
+            else do 
+               error "unable to auth database"
 
 
 runDB
@@ -89,27 +101,6 @@ runDB act = do
   liftIO $ withResource
     pool
     (\pipe -> access pipe master (T.pack (dbName dbConfig)) act)
-
-
-run :: Action IO a -> IO a
-run act = do
-  let host_addr = "x"
-  mUseReplica <- (lookupEnv "DB_USE_REPLICA")
-  db_name     <- (getEnv "DB_NAME")
-  let dbUser = T.pack "x" -- TODO sys envs
-  let dbPass = T.pack "x"
-  if mUseReplica == Nothing || mUseReplica == (Just "false")
-    then do -- local testing
-      pipe <- connect $ host host_addr
-      access pipe master (T.pack db_name) act
-    else do -- server with replica set
-      replicaSet <- openReplicaSetSRV' host_addr -- TODO this takes ages, would be great to have this lookup once at startup then never
-      pipe       <- primary replicaSet
-      auth       <- access pipe master (T.pack "admin") $ auth dbUser dbPass
-      if auth
-        then access pipe master (T.pack db_name) act
-        else error ("no access granted: ")
-      --closeReplicaSet replicaSet
 
 
 

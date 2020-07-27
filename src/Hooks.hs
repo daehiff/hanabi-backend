@@ -41,6 +41,7 @@ import           Data.Time.Clock.POSIX          ( getPOSIXTime
                                                 , POSIXTime
                                                 )
 import           Data.ByteString.Internal       ( ByteString )
+import qualified Data.ByteString.Char8         as BS8
 import           Responses
 import           Database.MongoDB               ( Pipe )
 import           Control.Monad.Trans.Reader     ( ReaderT )
@@ -79,42 +80,58 @@ This migitates the database requests per user request for checking the session
 -}
 updateJWTHook
   :: ListContains n SAP xs
-  => ActionCtxT (HVect xs) (WebStateM conn p st) (HVect xs)
+  => ActionCtxT (HVect xs) (WebStateM Pipe p AppConfig) (HVect xs)
 updateJWTHook = do
   oldCtx <- getContext
   let oldPayload :: SAP = (findFirst oldCtx)
   now <- liftIO _getNow
   let newTTL  = now + 15 * 60 * 1000 -- new TTL 15 mins
   let payload = oldPayload { ttl = newTTL }
-  jwt <- liftIO $ sessionToJWT payload
+  jwt <- sessionToJWT payload
   setHeader "auth" jwt
   return oldCtx
 
 
-sessionToJWT :: SAP -> IO T.Text
+sessionToJWT
+  :: (HasSpock m, MonadIO m, SpockState m ~ AppConfig) => SAP -> m T.Text
 sessionToJWT payload = do
-  let (Right jwt) = hmacEncode HS384 "test" (toStrict (encode payload))
+  jwtSecret <-
+    getState
+      >>= (\appCfg -> do
+            liftIO $ return $ jwtSecret appCfg
+          )
+  let (Right jwt) =
+        hmacEncode HS384 (BS8.pack jwtSecret) (toStrict (encode payload))
   return (T.pack (show (unJwt jwt)))
+
+-- $> :t sessionToJWT
 
 {-
 Auth hook that checks the users JWT
 -}
 authHook
-  :: ActionCtxT (HVect xs) (WebStateM Pipe p AppConfig) (HVect (User ': SAP ': xs))
+  :: ActionCtxT
+       (HVect xs)
+       (WebStateM Pipe p AppConfig)
+       (HVect (User ': SAP ': xs))
 authHook = do
   oldCtx             <- getContext
   jwt                <- (header "auth")
-  rawPayload         <- liftIO $ getRawPayload jwt
+  rawPayload         <- getRawPayload jwt
   unValidatedPayload <- liftIO $ convertPayloadToSAP rawPayload
   ePayload           <- validatePayload unValidatedPayload
   case ePayload of
     (Left  errorMsg) -> json $ errorJson authError errorMsg
     (Right payload ) -> return (user payload :&: payload :&: oldCtx)
  where
-  --getRawPayload :: Maybe T.Text -> IO (Either String ByteString)
   getRawPayload Nothing    = return (Left "Header: `auth` is missing")
   getRawPayload (Just jwt) = do
-    let eitherDecoded = hmacDecode "test" (encodeUtf8 jwt)
+    jwtSecret <-
+      getState
+        >>= (\appCfg -> do
+              liftIO $ return $ jwtSecret appCfg
+            )
+    let eitherDecoded = hmacDecode (BS8.pack jwtSecret) (encodeUtf8 jwt)
     case eitherDecoded of
       (Left error) -> return (Left ("Unable to parse JWT: " ++ show error))
       (Right (_, payload)) -> return (Right payload)
@@ -127,7 +144,9 @@ authHook = do
       Nothing -> return (Left "Error Parsing Payload, try to login again")
       (Just payload) -> return (Right payload)
 
-  validatePayload :: Either String SAP -> ActionCtxT (HVect xs) (WebStateM Pipe p AppConfig) (Either String SAP)
+  validatePayload
+    :: Either String SAP
+    -> ActionCtxT (HVect xs) (WebStateM Pipe p AppConfig) (Either String SAP)
   validatePayload (Left  error  ) = return (Left error)
   validatePayload (Right payload) = do
     now <- liftIO $ _getNow
