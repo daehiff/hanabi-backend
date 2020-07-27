@@ -2,7 +2,7 @@
 {-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE DataKinds     #-}
-
+{-# LANGUAGE DefaultSignatures, DeriveGeneric, TypeOperators, FlexibleContexts #-}
 module Init where
 
 import           Web.Spock
@@ -20,10 +20,14 @@ import           Model.Utils                    ( findObject
                                                 , updateObject
                                                 , findObjects
                                                 , findById
+                                                , setupDB
+                                                , DBConf(..)
+                                                , MongoObject(..)
                                                 )
 
 import           Data.HVect
 import           Database.MongoDB
+import           Data.Pool                      ( Pool )
 import           System.Environment             ( getEnv )
 import           Hooks                          ( initHook
                                                 , authHook
@@ -33,16 +37,41 @@ import           Handler.Auth                   ( loginHandle
                                                 , registerHandle
                                                 )
 
-import           Handler.Lobby
+import           Handler.Lobby                  
+import           Control.Monad.Trans.Reader     ( ReaderT
+                                                , ask
+                                                )
+import           Data.Pool                      ( withResource )
+import           System.Environment             ( getEnv
+                                                , lookupEnv
+                                                )
+import Responses
 
 
-type App ctx = Web.Spock.Core.SpockCtxT ctx (WebStateM () () ()) ()
+createConfig :: IO AppConfig
+createConfig = do
+  hostUrl     <- getEnv "DB_ADDR"
+  dbName      <- getEnv "DB_NAME"
+  useReplicaS <- (getEnv "DB_USE_REPLICA")
+  let useReplica = (useReplicaS == "true")
+  dbUser <- (getEnv "DB_USER")
+  dbPw   <- (getEnv "DB_PW")
+  let dbConf = DBConf { hostUrl    = hostUrl
+                      , dbUser     = dbUser
+                      , dbPass     = dbPw
+                      , useReplica = useReplica
+                      , dbName     = dbName
+                      }
+  return AppConfig { dbConf = dbConf, port = 8080, jwtSecret="test" }
+
 
 runApp :: IO ()
 runApp = do
   ref      <- newIORef 0
-  spockCfg <- defaultSpockCfg () PCNoDatabase ()
-  runSpock 8080 (spock spockCfg app)
+  config   <- createConfig
+  pool     <- setupDB $ dbConf config
+  spockCfg <- defaultSpockCfg () (PCPool pool) config
+  runSpock (port config) (spock spockCfg app)
 
 
 app :: App ()
@@ -66,8 +95,5 @@ app = do
       post ("/lobby" <//> var <//> "launch") $ launchGame
 
 
-cardHandler :: MonadIO m => String -> ActionCtxT ctx m b
-cardHandler id = do
-  card <- liftIO ((findById id) :: IO (Maybe Card))
-  json card
+
 

@@ -10,7 +10,6 @@ import           Test.Hspec.Wai.Internal
 import           Utils                          ( flushDB )
 import           Model
 import           Model.Utils
-import           Utils                          ( testApp )
 import           Web.Spock                      ( spockAsApp )
 import           Integration.Auth               ( userRegisterJSON
                                                 , userLoginJSON

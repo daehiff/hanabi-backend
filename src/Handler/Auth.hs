@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
 
 
 module Handler.Auth where
@@ -39,10 +39,32 @@ import           Control.Lens.Internal.ByteString
                                                 ( unpackStrict8 )
 import           Network.HTTP.Types             ( badRequest400 )
 import           Model.Utils
+import           Control.Monad.Trans.Reader     ( ReaderT )
+import           Database.MongoDB               ( Pipe )
 import           Controller.Utils               ( parseBody )
 
--- TODO generic secret for jwt
 
+{-
+Creates a new session for the user and adds it to the database.
+Returns the user that is loged in and the corresponding jwt
+-}
+logUserIn
+  :: (MonadTrans t, MonadIO (t (AppStateM sess)))
+  => User
+  -> t (AppStateM sess) (User, T.Text)
+logUserIn user = do
+  let (Key userId) = uid user
+  session <- (insertObject Session { sid = NewKey, sessionUser = (userId) })
+  let (Key sessionId) = sid session
+  let logedInUser = user { sessions = (sessionId : (sessions user)) }
+  (updateObject logedInUser)
+  now <- liftIO _getNow
+  let payload = SAP { user      = logedInUser
+                    , sessionid = sessionId
+                    , ttl       = now + 15 * 60 * 1000
+                    }
+  jwt <-  sessionToJWT payload
+  return (logedInUser, jwt)
 
 
 {-
@@ -57,7 +79,7 @@ import           Controller.Utils               ( parseBody )
 }
 
 -}
-loginHandle :: MonadIO m => ActionCtxT ctx m b
+loginHandle :: ActionCtxT ctx (AppStateM sess) b
 loginHandle = do
   rawBodyStr <- fromStrict <$> body
   let eEmailPw = parseBody
@@ -67,20 +89,20 @@ loginHandle = do
           password <- (obj .: "password") :: Parser String
           return (email, password)
         )
-  eUserData <- liftIO (checkUser eEmailPw)
+  eUserData <- (checkUser eEmailPw)
   case eUserData of
     (Left error) -> do
       setStatus badRequest400
       json (errorJson loginError error)
     (Right user) -> do
-      (logedInUser, jwt) <- liftIO $ logUserIn user
+      (logedInUser, jwt) <- logUserIn user
       setHeader "auth" jwt
       json (sucessJson sucessCode logedInUser)
  where
-  checkUser :: Either String (String, String) -> IO (Either String User)
+  checkUser :: Either String (String, String) -> ActionCtxT ctx (AppStateM sess) (Either String User)
   checkUser (Left  error            ) = return (Left error)
   checkUser (Right (email, password)) = do
-    eUser <- findObject ["email" =: val email] :: IO (Maybe User)
+    (eUser :: Maybe User ) <- findObject ["email" =: val email]
     case eUser of
       Nothing     -> return (Left "User not avaiable")
       (Just user) -> return (validateUser password user)
@@ -105,7 +127,7 @@ loginHandle = do
     "username": "sampleusername"
 }
 -}
-registerHandle :: MonadIO m => ActionCtxT ctx m b
+registerHandle :: ActionCtxT ctx (AppStateM sess) b
 registerHandle = do
   rawBodyStr <- fromStrict <$> body
   let eReqData = parseBody
@@ -117,15 +139,15 @@ registerHandle = do
           return (email, username, password)
         )
   userCreated    <- liftIO (createuser eReqData)
-  emailValidated <- liftIO $ validateEmail userCreated
-  userValid      <- liftIO $ validateUsername emailValidated
-  euser          <- liftIO $ storeUser userValid
+  emailValidated <- validateEmail userCreated
+  userValid      <- validateUsername emailValidated
+  euser          <- storeUser userValid
   case euser of
     (Left error) -> do
       setStatus badRequest400
       json (errorJson registrationError error)
     (Right user) -> do
-      (logedInUser, jwt) <- liftIO $ logUserIn user
+      (logedInUser, jwt) <- logUserIn user
       setHeader "auth" jwt
       json (sucessJson sucessCode logedInUser)
  where
@@ -143,42 +165,26 @@ registerHandle = do
                        }
     return (Right newUser)
 
-  validateEmail :: Either String User -> IO (Either String User)
+  validateEmail :: Either String User -> ActionCtxT ctx (AppStateM sess) (Either String User)
   validateEmail (Left  error) = return (Left error)
   validateEmail (Right user ) = do
-    existingUser <-
-      liftIO (findObject ["email" =: val (email user)]) :: IO (Maybe User)
+    (existingUser :: Maybe User) <- (findObject ["email" =: val (email user)]) 
     case existingUser of
       (Just user) -> return (Left "user with this email already exists.")
       (Nothing  ) -> return (Right user)
 
-  validateUsername :: Either String User -> IO (Either String User)
+  validateUsername :: Either String User -> ActionCtxT ctx (AppStateM sess) (Either String User)
   validateUsername (Left  error) = return (Left error)
   validateUsername (Right user ) = do
-    existingUser <-
-      liftIO (findObject ["username" =: val (username user)]) :: IO (Maybe User)
+    (existingUser :: Maybe User) <- (findObject ["username" =: val (username user)])
     case existingUser of
       (Just user) -> return (Left "Username is already taken.")
       (Nothing  ) -> return (Right user)
 
-  storeUser :: Either String User -> IO (Either String User)
+  storeUser :: Either String User -> ActionCtxT ctx (AppStateM sess)  (Either String User)
   storeUser (Left  error) = return (Left error)
   storeUser (Right user ) = do
     insertedUser <- insertObject user
     return (Right insertedUser)
 
 
-logUserIn :: User -> IO (User, T.Text)
-logUserIn user = do
-  let (Key userId) = uid user
-  session <- (insertObject Session { sid = NewKey, sessionUser = (userId) })
-  let (Key sessionId) = sid session
-  let logedInUser = user { sessions = (sessionId : (sessions user)) }
-  liftIO (updateObject logedInUser)
-  now <- liftIO _getNow
-  let payload = SAP { user      = logedInUser
-                    , sessionid = sessionId
-                    , ttl       = now + 15 * 60 * 1000
-                    }
-  jwt <- liftIO $ sessionToJWT payload
-  return (logedInUser, jwt)

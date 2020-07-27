@@ -7,16 +7,19 @@ import           Test.Hspec.Wai
 import           Network.Wai                    ( Middleware )
 
 import           Utils                          ( flushDB )
-
-import           Init                           ( app )
+import           Model.Utils                    ( setupDB )
+import           Init                           ( app
+                                                , createConfig
+                                                )
 import           Web.Spock                      ( spock
                                                 , spockAsApp
                                                 )
 import           Web.Spock.Config
+import           Database.MongoDB               ( Pipe )
+import           Responses
 ----------------------------------------------------------------
-import           Integration.Auth           ( authTest )
+import           Integration.Auth               ( authTest )
 import           Integration.Lobby              ( lobbyTest )
-import           Utils                          ( testApp )
 
 beforeAll = do
   flushDB
@@ -24,6 +27,13 @@ beforeAll = do
 afterAll = do
   flushDB
 
+
+testApp :: IO Middleware
+testApp = do
+  appcfg   <- createConfig
+  pool     <- setupDB $ dbConf appcfg
+  spockCfg <- defaultSpockCfg () (PCPool pool) appcfg
+  spock spockCfg app
 
 main :: IO ()
 main = hspec spec

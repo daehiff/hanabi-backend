@@ -65,10 +65,12 @@ To create documentation, use `make doc`
 The backend needs to be configured, by a .env file before running create a file `.env`:
 
 ```bash
-export DB_ADDR="127.0.0.1"
-export DB_NAME="test"
+export DB_ADDR="localhost"
+export DB_NAME="tests"
+export DB_USE_REPLICA="false"
+export DB_USER=""
 export DB_PW=""
-export DB_UNAME=""
+
 ```
 ## Hints
 

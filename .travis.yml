@@ -25,13 +25,14 @@ before_install:
   - export PATH=$HOME/.local/bin:$PATH
   - travis_retry curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
   - chmod +x .travis/genDoc.sh
+  - chmod +x .tenv
 
 jobs:
   include:
     - stage: "Build & Test" 
       name: "Build & Test"
       script: |
-        stack build 
+        source .tenv && stack build 
         stack test
       env: # setup envs for connecting to local test db
         - DB_ADDR="127.0.0.1"
