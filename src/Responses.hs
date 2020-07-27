@@ -57,11 +57,14 @@ registrationError = 3
 lobbyNotFoundError :: Int
 lobbyNotFoundError = 4
 
+errorCreateLobby:: Int
+errorCreateLobby = 5
+
 errorJoinLobby :: Int
-errorJoinLobby = 5
+errorJoinLobby = 6
 
 errorKickPlayer :: Int
-errorKickPlayer = 6
+errorKickPlayer = 7
 
 errorLaunch :: Int
-errorLaunch = 7
+errorLaunch = 8

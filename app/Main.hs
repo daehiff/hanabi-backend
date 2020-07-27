@@ -2,9 +2,12 @@ module Main where
 
 import           Init                           ( runApp )
 
-import           Web.Spock
-import           Web.Spock.Config
-import Network.Wai.Middleware.Static
+
+import Model
+import Model.Utils
+
+
+import Data.Aeson (encode)
 
 import           Control.Monad.Trans
 import           Database.MongoDB hiding(lookup)
@@ -17,3 +20,5 @@ import Model.Utils
 
 main :: IO ()
 main = runApp
+
+

@@ -37,11 +37,7 @@ import           Handler.Auth                   ( loginHandle
                                                 , registerHandle
                                                 )
 
-import           Handler.Lobby                  ( createLobby
-                                                , joinLobby
-                                                , findLobbys
-                                                , joinLobby
-                                                ) 
+import           Handler.Lobby                  
 import           Control.Monad.Trans.Reader     ( ReaderT
                                                 , ask
                                                 )
@@ -50,9 +46,6 @@ import           System.Environment             ( getEnv
                                                 , lookupEnv
                                                 )
 import Responses
--- TODO (1) create config available App wide
---      (2) refactor insert/.../
---      (3) remove unit tests
 
 
 createConfig :: IO AppConfig
@@ -69,7 +62,8 @@ createConfig = do
                       , useReplica = useReplica
                       , dbName     = dbName
                       }
-  return AppConfig { dbConf = dbConf, port = 8080, jwtSecret="psssst!" }
+  return AppConfig { dbConf = dbConf, port = 8080, jwtSecret="test" }
+
 
 runApp :: IO ()
 runApp = do
@@ -82,21 +76,24 @@ runApp = do
 
 app :: App ()
 app = do
-{-   middleware (staticPolicy (addBase "static")) $ do
-      get "/doc" $ do
-        file (T.pack "") "./static/doc/index.html"   -}
   prehook initHook $ do
     middleware (staticPolicy (addBase "./static/doc"))
-    get "/doc" $ do
-      file (T.pack "") "./static/doc/index.html"
     get root $ do
       file (T.pack "") "./static/landingPage.html"
+    get "/doc" $ do
+      file (T.pack "") "./static/doc/index.html"
     post "/auth/login" $ loginHandle
     post "/auth/register" $ registerHandle
     prehook authHook $ prehook updateJWTHook $ do
+      -- Lobby Routes
       post "/lobby/create" $ createLobby
       get ("/lobby/find") findLobbys
-      post ("/lobby/join" <//> var) $ joinLobby 
+      post ("/lobby/join" <//> var) $ joinLobby
+      post ("/lobby/" <//> var <//> "leave") $ leaveLobby
+      post ("/lobby" <//> var <//> "kick" <//> var) $ kickPlayer
+      get ("/lobby" <//> var <//> "status") $ getStatus
+      post ("/lobby" <//> var <//> "launch") $ launchGame
+
 
 
 

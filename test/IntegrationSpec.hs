@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module IntegrationSpec where
 
 import           Test.Hspec
@@ -5,16 +7,19 @@ import           Test.Hspec.Wai
 import           Network.Wai                    ( Middleware )
 
 import           Utils                          ( flushDB )
-import Model.Utils (setupDB)
-import           Init                           ( app, createConfig )
+import           Model.Utils                    ( setupDB )
+import           Init                           ( app
+                                                , createConfig
+                                                )
 import           Web.Spock                      ( spock
                                                 , spockAsApp
                                                 )
 import           Web.Spock.Config
-import Database.MongoDB (Pipe)
-import Responses
+import           Database.MongoDB               ( Pipe )
+import           Responses
 ----------------------------------------------------------------
-import Integration.AuthTest (authTest)
+import           Integration.Auth               ( authTest )
+import           Integration.Lobby              ( lobbyTest )
 
 beforeAll = do
   flushDB
@@ -22,10 +27,11 @@ beforeAll = do
 afterAll = do
   flushDB
 
+
 testApp :: IO Middleware
 testApp = do
-  appcfg <- createConfig
-  pool <- setupDB $ dbConf appcfg
+  appcfg   <- createConfig
+  pool     <- setupDB $ dbConf appcfg
   spockCfg <- defaultSpockCfg () (PCPool pool) appcfg
   spock spockCfg app
 
@@ -35,3 +41,5 @@ main = hspec spec
 spec :: Spec
 spec = with (spockAsApp testApp) $ do
   authTest
+  lobbyTest
+

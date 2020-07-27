@@ -15,7 +15,6 @@ generateSalt = do
     let noun      = "language"
     adjIdx  <- randomRIO (0, length adjectives - 1)
     nounIdx <- randomRIO (0, length adjectives - 1)
-
     return ((adjectives !! adjIdx) ++ "-" ++ (nouns !! nounIdx))
   where 
     getWords :: FilePath -> IO [String]
@@ -30,6 +29,3 @@ findLobbyById lobbyId = do
   case mlobby of
     Nothing      -> return (Left "Lobby not found")
     (Just lobby) -> return (Right lobby)
-
-
- 

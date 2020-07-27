@@ -38,6 +38,7 @@ import           Responses                      ( AppStateM
                                                 , AppConfig(..)
                                                 )
 ------------------------------------------------------------------
+import           Text.Read                      ( readMaybe )
 
 
 instance (Val a, Val b) => Val (Either a b) where
@@ -80,11 +81,10 @@ setupDB connData = do
           then return pipe
           else do
             auth <- access pipe master (T.pack "admin") $ auth username pass
-            if auth 
-            then 
-              return pipe 
-            else do 
-               error "unable to auth database"
+            if auth
+              then return pipe
+              else do
+                error "unable to auth database"
 
 
 runDB
@@ -148,7 +148,10 @@ class (ToBSON a, FromBSON a) => MongoObject a where {-MUST DEFINE: insertId, col
   Note: that in order to find the correct object, a typecast is necessary
   -}
   findById:: (MonadTrans t, MonadIO (t (AppStateM sess))) => String -> t (AppStateM sess) (Maybe a)
-  findById id = findObject [T.pack ("_id") =: ObjId (read id)]
+  findById id =    
+    let mobjId = readMaybe id :: Maybe ObjectId
+    in
+      findObject [T.pack ("_id") =: val mobjId]
 
   {- 
   Find a certaint object by a custom selector:

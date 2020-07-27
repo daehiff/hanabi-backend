@@ -41,7 +41,8 @@ import           Network.HTTP.Types             ( badRequest400 )
 import           Model.Utils
 import           Control.Monad.Trans.Reader     ( ReaderT )
 import           Database.MongoDB               ( Pipe )
--- TODO generic secret for jwt
+import           Controller.Utils               ( parseBody )
+
 
 {-
 Creates a new session for the user and adds it to the database.
@@ -65,8 +66,18 @@ logUserIn user = do
   jwt <-  sessionToJWT payload
   return (logedInUser, jwt)
 
+
 {-
-TODO add api doc here
+@api {post} {{base_url}}/auth/login Log user in
+@apiName login 
+@apiGroup Auth
+@apiDescription launch a game (players must be 4<=p<=6)
+@apiErrorExample {json} Sample Input:
+{
+    "email": "samplemail@provider.com",
+    "password": "supersaveandsecure"
+}
+
 -}
 loginHandle :: ActionCtxT ctx (AppStateM sess) b
 loginHandle = do
@@ -105,7 +116,16 @@ loginHandle = do
             else (Left "invalid password")
 
 {-
-TODO add apidoc here
+@api {post} {{base_url}}/auth/login Register user 
+@apiName register
+@apiGroup Auth
+@apiDescription Register a new User
+@apiErrorExample {json} Sample Input:
+{
+    "email": "samplemail@provider.com",
+    "password": "supersaveandsecure",
+    "username": "sampleusername"
+}
 -}
 registerHandle :: ActionCtxT ctx (AppStateM sess) b
 registerHandle = do
@@ -167,14 +187,4 @@ registerHandle = do
     insertedUser <- insertObject user
     return (Right insertedUser)
 
-
-{-
-Parse a json Body by a custom set strategy defined by a function that maps the object towards the custom datatype
--}
-parseBody :: ByteString -> (Object -> Parser b) -> Either String b
-parseBody rawBodyStr parseStrat = do
-  let (eResult) = (eitherDecode rawBodyStr) :: Either String Object
-  case eResult of
-    (Left  error ) -> (Left error)
-    (Right result) -> (flip parseEither result $ parseStrat)
 

@@ -33,7 +33,7 @@ import           Control.Monad.Trans
 import           Control.Monad                  ( liftM )
 
 import qualified Data.Text                     as T
-import           Data.Text.Encoding             ( encodeUtf8 )
+import           Data.Text.Encoding             ( encodeUtf8, decodeUtf8 )
 import           Data.ByteString.Lazy           ( fromStrict
                                                 , toStrict
                                                 )
@@ -41,6 +41,8 @@ import           Data.Time.Clock.POSIX          ( getPOSIXTime
                                                 , POSIXTime
                                                 )
 import           Data.ByteString.Internal       ( ByteString )
+
+import           Network.HTTP.Types             ( badRequest400 )
 import qualified Data.ByteString.Char8         as BS8
 import           Responses
 import           Database.MongoDB               ( Pipe )
@@ -100,11 +102,8 @@ sessionToJWT payload = do
       >>= (\appCfg -> do
             liftIO $ return $ jwtSecret appCfg
           )
-  let (Right jwt) =
-        hmacEncode HS384 (BS8.pack jwtSecret) (toStrict (encode payload))
-  return (T.pack (show (unJwt jwt)))
-
--- $> :t sessionToJWT
+  let (Right jwt) = hmacEncode HS384 "test" (toStrict (encode payload))
+  return (decodeUtf8 (unJwt jwt))
 
 {-
 Auth hook that checks the users JWT
@@ -121,8 +120,10 @@ authHook = do
   unValidatedPayload <- liftIO $ convertPayloadToSAP rawPayload
   ePayload           <- validatePayload unValidatedPayload
   case ePayload of
-    (Left  errorMsg) -> json $ errorJson authError errorMsg
-    (Right payload ) -> return (user payload :&: payload :&: oldCtx)
+    (Left errorMsg) -> do
+      setStatus badRequest400
+      json $ errorJson authError errorMsg
+    (Right payload) -> return (user payload :&: payload :&: oldCtx)
  where
   getRawPayload Nothing    = return (Left "Header: `auth` is missing")
   getRawPayload (Just jwt) = do

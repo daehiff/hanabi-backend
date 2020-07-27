@@ -112,4 +112,3 @@ instance MongoObject Lobby where
 
   insertId id session = session { lid = Key (show id) }
 
-

@@ -31,7 +31,6 @@ jobs:
   include:
     - stage: "Build & Test" 
       name: "Build & Test"
-      if: branch = master
       script: |
         source .tenv && stack build 
         stack test

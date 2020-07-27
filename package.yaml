@@ -76,4 +76,9 @@ tests:
     dependencies:
       - Hanabi-Backend
       - hspec               # testing lib
+      - hspec-core
       - hspec-wai
+      - wai-extra
+      - hspec-wai-json
+      - case-insensitive
+      - regex-compat

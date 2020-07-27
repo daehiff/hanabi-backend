@@ -21,3 +21,4 @@ flushDB  = dropDB >> return ()
     dropDB = do
       db_name   <- (getEnv "DB_NAME")
       run $ dropDatabase $ T.pack db_name 
+
