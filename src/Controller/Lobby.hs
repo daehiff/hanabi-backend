@@ -4,7 +4,7 @@ import Model
 import Model.Utils
 import           System.Random                  ( randomRIO )
 
-generateSalt :: IO String
+{- generateSalt :: IO String
 generateSalt = do
     adjectives <- getWords "./static/wordlist-adjectives.txt"
     nouns      <- getWords "./static/wordlist-nouns.txt"
@@ -29,3 +29,4 @@ findLobbyById lobbyId = do
     (Just lobby) -> return (Right lobby)
 
 
+ -}

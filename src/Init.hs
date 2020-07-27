@@ -32,9 +32,9 @@ import           Hooks                          ( initHook
                                                 , authHook
                                                 , updateJWTHook
                                                 )
-{- import           Handler.Auth                   ( loginHandle
+import           Handler.Auth                   ( loginHandle
                                                 , registerHandle
-                                                ) -}
+                                                )
 
 {- import           Handler.Lobby                  ( createLobby
                                                 , joinLobby
@@ -49,14 +49,11 @@ import           Data.Pool                      ( withResource )
 import           System.Environment             ( getEnv
                                                 , lookupEnv
                                                 )
+import Responses
 -- TODO (1) create config available App wide
 --      (2) refactor insert/.../
 --      (3) remove unit tests
 
-type App ctx = SpockCtxM ctx Pipe () AppConfig ()
-type AppHandle ctx a = SpockActionCtx ctx Pipe () AppConfig a
-type AppStateM sess = WebStateM Pipe sess AppConfig 
-data AppConfig = AppConfig {dbConf:: DBConf, port::Int}
 
 createConfig :: IO AppConfig
 createConfig = do
@@ -88,15 +85,15 @@ app = do
 {-   middleware (staticPolicy (addBase "static")) $ do
       get "/doc" $ do
         file (T.pack "") "./static/doc/index.html"   -}
-  --prehook initHook $ do
-    --middleware (staticPolicy (addBase "./static/doc"))
-    --get "/doc" $ do
-    --  file (T.pack "") "./static/doc/index.html"
-  get root $ do
-    file (T.pack "") "./static/landingPage.html"
-  get "/test" sampleHandle
-    --post "/auth/login" $ loginHandle
-    --post "/auth/register" $ registerHandle
+  prehook initHook $ do
+    middleware (staticPolicy (addBase "./static/doc"))
+    get "/doc" $ do
+      file (T.pack "") "./static/doc/index.html"
+    get root $ do
+      file (T.pack "") "./static/landingPage.html"
+    --get "/test" sampleHandle
+    post "/auth/login" $ loginHandle
+    post "/auth/register" $ registerHandle
 {-     prehook authHook $ prehook updateJWTHook $ do
       post "/lobby/create" $ createLobby
       get ("/lobby/find") findLobbys
@@ -104,13 +101,19 @@ app = do
 
 
 runDB
-  :: (MonadTrans t, MonadIO (t (AppStateM sess))) =>
-     Action IO b -> t (AppStateM sess) b
+  :: (MonadTrans t, MonadIO (t (AppStateM sess)))
+  => Action IO b
+  -> t (AppStateM sess) b
 runDB act = do
-  dbConfig <- getState >>= (\appCfg -> do liftIO $ return $ dbConf appCfg)
-  pool   <- getSpockPool
-  liftIO
-    $ withResource pool (\pipe -> access pipe master (T.pack (dbName dbConfig)) act)
+  dbConfig <-
+    getState
+      >>= (\appCfg -> do
+            liftIO $ return $ dbConf appCfg
+          )
+  pool <- getSpockPool
+  liftIO $ withResource
+    pool
+    (\pipe -> access pipe master (T.pack (dbName dbConfig)) act)
 
 
 sampleHandle :: AppHandle () ()
@@ -118,5 +121,6 @@ sampleHandle = do
   pool <- getSpockPool
   card <- (runDB (findOne $ select [] "cards"))
   text $ T.pack (show card)
+
 
 

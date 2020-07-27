@@ -3,7 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Handler.Lobby where
-
+{- 
 import           Web.Spock
 import           Web.Spock.Config
 import           Responses
@@ -326,3 +326,4 @@ launchGame lobbyId = do
     updateObject newLobby
     return (Right newLobby)
 
+ -}
