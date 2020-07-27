@@ -59,7 +59,7 @@ logUserIn user = do
   let logedInUser = user { sessions = (sessionId : (sessions user)) }
   (updateObject logedInUser)
   now <- liftIO _getNow
-  let payload = SAP { user      = logedInUser
+  let payload = SAP { user      = logedInUser {sessions=[]}
                     , sessionid = sessionId
                     , ttl       = now + 15 * 60 * 1000
                     }

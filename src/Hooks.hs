@@ -87,7 +87,7 @@ updateJWTHook = do
   oldCtx <- getContext
   let oldPayload :: SAP = (findFirst oldCtx)
   now <- liftIO _getNow
-  let newTTL  = now + 15 * 60 * 1000 -- new TTL 15 mins
+  let newTTL  = now + 15 * 60 * 1000 
   let payload = oldPayload { ttl = newTTL }
   jwt <- sessionToJWT payload
   setHeader "auth" jwt
@@ -102,7 +102,7 @@ sessionToJWT payload = do
       >>= (\appCfg -> do
             liftIO $ return $ jwtSecret appCfg
           )
-  let (Right jwt) = hmacEncode HS384 "test" (toStrict (encode payload))
+  let (Right jwt) = hmacEncode HS384 (BS8.pack jwtSecret) (toStrict (encode payload))
   return (decodeUtf8 (unJwt jwt))
 
 {-
@@ -164,7 +164,7 @@ authHook = do
             let (Just user) = mUser
             let newPayload  = payload { user = user }
             if (sessionid newPayload) `elem` (sessions user)
-              then return (Right newPayload)
+              then return (Right newPayload { user = user {sessions=[]}})
               else return (Left "Session Expired, please login again.")
 
   isValidTTL :: Integer -> Integer -> Bool
