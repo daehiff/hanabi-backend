@@ -13,7 +13,7 @@ module Model.Utils
   , setupDB
   )
 where
-
+import           Web.Spock                      ( getSpockPool )
 import           Data.Aeson                     ( ToJSON()
                                                 , FromJSON(parseJSON)
                                                 )
@@ -25,11 +25,22 @@ import           System.Environment             ( getEnv
 import           Model.BSONExtention
 import           Data.Maybe                     ( fromMaybe )
 
-import           Data.Pool                      ( createPool, Pool )
-import Control.Monad.Trans.Reader (ReaderT, ask)
+import           Data.Pool                      ( withResource
+                                                , createPool
+                                                , Pool
+                                                )
+import           Control.Monad.Trans.Reader     ( ReaderT
+                                                , ask
+                                                )
+import           Control.Monad.Trans
+
 ------------------------------------------------------------------
 
-data DBConf = DBConf {hostUrl:: String, dbUser::String, dbPass::String, useReplica::Bool } 
+data DBConf = DBConf {hostUrl:: String, 
+                      dbUser::String, 
+                      dbPass::String, 
+                      dbName::String, 
+                      useReplica::Bool }
       deriving(Show)
 
 instance (Val a, Val b) => Val (Either a b) where
@@ -50,30 +61,30 @@ instance (Val a, Val b) => Val (a, b) where
 
 
 createDBConnection connData = do
-  let url = hostUrl connData
-  let username    = T.pack (dbUser connData)
-  let pass    = T.pack $ dbPass connData
+  let url      = hostUrl connData
+  let username = T.pack (dbUser connData)
+  let pass     = T.pack $ dbPass connData
   replicaSet <- openReplicaSetSRV' url
   pipe       <- primary replicaSet
   auth       <- access pipe master (T.pack "admin") $ auth username pass
-  return (auth, pipe)
+  if auth then return pipe else error "unable to auth database"
 
 
 
 setupDB connData = do
-  pool <- createPool (createDBConnection connData)
-                     (\(_, pipe) -> close pipe)
-                     1
-                     300
-                     5
-  return pool 
+  pool <- createPool (createDBConnection connData) (\pipe -> close pipe) 1 300 5
+  return pool
 
-run' :: Action (ReaderT (Bool, Pipe) IO) a -> ReaderT (Bool, Pipe) IO a
+_run pool act = do
+  withResource pool (\pipe -> access pipe master (T.pack "db_name") act)
+
+--run' :: Action IO a -> ReaderT (Pool Pipe) IO a
 run' act = do
-  (auth, pipe) <- ask
-  if auth 
-  then access pipe master (T.pack "db_name") act
-  else error "no access granted."
+  pool <- getSpockPool
+  liftIO
+    $ withResource pool (\pipe -> access pipe master (T.pack "db_name") act)
+
+-- $> :t run'
 
 
 run :: Action IO a -> IO a
@@ -114,9 +125,9 @@ class (ToBSON a, FromBSON a) => MongoObject a where {-MUST DEFINE: insertId, col
   Insert a new (!) Mongo Object into the database 
   This will rais an error in case a object with an existing id will be inserted
   -}
-  insertObject:: a ->  ReaderT (Bool, Pipe) IO a
+  insertObject:: a ->  IO a
   insertObject object = do
-    id <- run' $ insert (collection (undefined::a)) (serialize object)
+    id <- run $ insert (collection (undefined::a)) (serialize object)
     return (insertId id object)
 
   {-

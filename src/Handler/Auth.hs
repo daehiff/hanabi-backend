@@ -39,7 +39,8 @@ import           Control.Lens.Internal.ByteString
                                                 ( unpackStrict8 )
 import           Network.HTTP.Types             ( badRequest400 )
 import           Model.Utils
-
+import  Control.Monad.Trans.Reader (ReaderT)
+import Database.MongoDB (Pipe)
 -- TODO generic secret for jwt
 
 {-
@@ -49,7 +50,7 @@ Returns the user that is loged in and the corresponding jwt
 logUserIn :: User -> IO (User, T.Text)
 logUserIn user = do
   let (Key userId) = uid user
-  session <- (insertObject Session { sid = NewKey, sessionUser = (userId) })
+  session <- liftIO (insertObject Session { sid = NewKey, sessionUser = (userId) })
   let (Key sessionId) = sid session
   let logedInUser = user { sessions = (sessionId : (sessions user)) }
   liftIO (updateObject logedInUser)
@@ -64,7 +65,7 @@ logUserIn user = do
 {-
 TODO add api doc here
 -}
-loginHandle :: MonadIO m => ActionCtxT ctx m b
+--loginHandle :: MonadIO m => ActionCtxT ctx m b
 loginHandle = do
   rawBodyStr <- fromStrict <$> body
   let eEmailPw = parseBody
@@ -80,7 +81,7 @@ loginHandle = do
       setStatus badRequest400
       json (errorJson loginError error)
     (Right user) -> do
-      (logedInUser, jwt) <- liftIO $ logUserIn user
+      (logedInUser, jwt) <- lift $ logUserIn user
       setHeader "auth" jwt
       json (sucessJson sucessCode logedInUser)
  where
@@ -103,7 +104,7 @@ loginHandle = do
 {-
 TODO add apidoc here
 -}
-registerHandle :: MonadIO m => ActionCtxT ctx m b
+--registerHandle :: MonadIO m => ActionCtxT ctx m b
 registerHandle = do
   rawBodyStr <- fromStrict <$> body
   let eReqData = parseBody
@@ -117,7 +118,7 @@ registerHandle = do
   userCreated    <- liftIO (createuser eReqData)
   emailValidated <- liftIO $ validateEmail userCreated
   userValid      <- liftIO $ validateUsername emailValidated
-  euser          <- liftIO $ storeUser userValid
+  euser          <- lift $ storeUser userValid
   case euser of
     (Left error) -> do
       setStatus badRequest400
@@ -159,12 +160,11 @@ registerHandle = do
       (Just user) -> return (Left "Username is already taken.")
       (Nothing  ) -> return (Right user)
 
-  storeUser :: Either String User -> IO (Either String User)
+  --storeUser :: Either String User -> IO (Either String User)
   storeUser (Left  error) = return (Left error)
   storeUser (Right user ) = do
     insertedUser <- insertObject user
     return (Right insertedUser)
-
 
 
 {-

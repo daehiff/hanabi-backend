@@ -62,7 +62,7 @@ createLobby = do
                      , public       = public
                      , launched     = launched
                      }
-  lobby <- lift $ insertObject lobbyC
+  lobby <- liftIO $ insertObject lobbyC
   json $ sucessJson sucessCode lobby
 
 {-
