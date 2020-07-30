@@ -48,4 +48,5 @@ jobs:
       before_deploy: cd $TRAVIS_BUILD_DIR && mv -f ./.travis/.gitignore .gitignore
       deploy:
         provider: heroku
+        api_key: $HEROKU_API_KEY
         strategy: git
