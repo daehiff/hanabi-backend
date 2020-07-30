@@ -42,7 +42,7 @@ jobs:
         - DB_USE_REPLICA="false"
         - PORT="8080"
     - stage: "Deploy"
-      before_deploy: sh .travis/genDoc.sh 
+      before_deploy: sh .travis/genDoc.sh && rm Makefile 
       deploy:
         provider: heroku
         api_key: $HEROKU_API_KEY
