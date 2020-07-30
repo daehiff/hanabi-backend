@@ -45,7 +45,7 @@ jobs:
       script: |
         stack build
         sh .travis/genDoc.sh
-      before_deploy: .travis/updateGit.sh
+      before_deploy: cd $TRAVIS_BUILD_DIR && mv -f ./.travis/.gitignore .gitignore
       deploy:
         provider: heroku
         strategy: git
