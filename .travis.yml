@@ -13,13 +13,6 @@ services:
   - docker
 
 before_install:
-  # MongoDB for test purposes
-  - |
-    filename=$HOME/docker-cache/saved_images.tar
-    if [[ -f "$filename" ]]; then docker load < "$filename"; fi
-    mkdir -p docker-cache
-    docker pull mongo:4.0.4
-  - docker run -d -p 27017-27019:27017-27019 mongo:4.0.4
   # Download and unpack the stack executable
   - mkdir -p ~/.local/bin
   - export PATH=$HOME/.local/bin:$PATH
@@ -31,8 +24,12 @@ jobs:
   include:
     - stage: "Build & Test" 
       name: "Build & Test"
-      script: |
-        stack build 
+      script:  |
+        filename=$HOME/docker-cache/saved_images.tar
+        if [[ -f "$filename" ]]; then docker load < "$filename"; fi
+        mkdir -p docker-cache
+        docker pull mongo:4.0.4
+        docker run -d -p 27017-27019:27017-27019 mongo:4.0.4 
         stack test
       env: # setup envs for connecting to local test db
         - DB_ADDR="127.0.0.1"
@@ -42,8 +39,13 @@ jobs:
         - DB_USE_REPLICA="false"
         - PORT="8080"
     - stage: "Deploy"
-      before_deploy: sh .travis/genDoc.sh && rm Makefile 
+      before_deploy: |
+        sh .travis/genDoc.sh
+        rm Makefile 
+        git add .
+        git commit -m "Deploy Build Nr.: $TRAVIS_BUILD_NUMBER"
       deploy:
         provider: heroku
         api_key: $HEROKU_API_KEY
         skip_cleanup: true
+        strategy: git

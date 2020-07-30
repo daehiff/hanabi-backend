@@ -71,7 +71,7 @@ logUserIn user = do
 @api {post} {{base_url}}/auth/login Log user in
 @apiName login 
 @apiGroup Auth
-@apiDescription launch a game (players must be 4<=p<=6)
+@apiDescription logs the user in by its email and password 
 @apiErrorExample {json} Sample Input:
 {
     "email": "samplemail@provider.com",
