@@ -55,7 +55,7 @@ instance MongoObject Card where
   insertId id card = card { cid = Key (show id) }
 
 
-data User = User {uid::ObjectKey,username::String, email::String, password_hash:: Maybe String ,sessions::[String]}
+data User = User {uid::ObjectKey,username::String, email::String, password_hash:: Maybe String ,sessions::[String], pwsalt::String}
                     deriving (Show, Generic, Eq, ToBSON, FromBSON)
 
 instance ToJSON User where
@@ -65,6 +65,7 @@ instance ToJSON User where
     , "email" .= email user
     , "sessions" .= (toJSON (sessions user))
     ]
+
 
 instance FromJSON User where
   parseJSON (Object v) = do
@@ -77,6 +78,7 @@ instance FromJSON User where
                 , email         = email
                 , password_hash = Nothing
                 , sessions      = sessions
+                , pwsalt = ""
                 }
 
 

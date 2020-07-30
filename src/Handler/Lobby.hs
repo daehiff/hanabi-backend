@@ -12,6 +12,7 @@ import           Data.Text               hiding ( unfoldr
                                                 , take
                                                 , lines
                                                 , length
+                                                , map
                                                 )
 import qualified Data.Text                     as T
 import           Data.List                      ( unfoldr )
@@ -44,7 +45,30 @@ import           Database.MongoDB               ( Pipe )
 import           Control.Monad.Trans.Reader     ( ReaderT )
 
 import           Controller.Utils               ( getCurretISOTime )
- {-
+
+
+findAvailableLobbys :: Maybe String -> Bool -> AppHandle (HVect xs) ([Lobby])
+findAvailableLobbys Nothing public = do -- TODO is here a error?
+  now <- liftIO getCurretISOTime
+  let past = addUTCTime (-60 * 60 :: NominalDiffTime) (now)
+  (mLobbys :: [Maybe Lobby]) <- findObjects
+    ["created" =: ["$gte" =: val past], "public" =: val public]
+    []
+  let lobbys = [ lobby | (Just lobby) <- mLobbys ]
+  return lobbys
+findAvailableLobbys (Just salt) public = do
+  now <- liftIO getCurretISOTime
+  let past = addUTCTime (-60 * 60 :: NominalDiffTime) (now)
+  (mLobbys :: [Maybe Lobby]) <- findObjects
+    [ "created" =: ["$gte" =: val past]
+    , "public" =: val public
+    , "salt" =: val salt
+    ]
+    []
+  let lobbys = [ lobby | (Just lobby) <- mLobbys ]
+  return lobbys
+
+{-
   @api {post} {{base_url}}/lobby/create create Lobby
   @apiName create 
   @apiGroup Lobby
@@ -54,8 +78,7 @@ import           Controller.Utils               ( getCurretISOTime )
 {
   "public": false
 }
- -}
-
+-}
 createLobby :: (ListContains n User xs) => AppHandle (HVect xs) ()
 createLobby = do
   oldCtx     <- getContext
@@ -71,10 +94,13 @@ createLobby = do
       setStatus badRequest400
       json $ errorJson errorCreateLobby error
     (Right public) -> do
+      lobbys     <- findAvailableLobbys Nothing True
+      let salts = [ salt lobby | lobby <- lobbys ]
+      
       let host :: User = (findFirst oldCtx)
       let (Key _id)    = uid host
       now  <- liftIO getCurretISOTime
-      salt <- liftIO generateSalt
+      salt <- liftIO $ generateSalt salts
       let launched = False
       let lobbyC = Lobby { lid          = NewKey
                          , lobbyHost    = _id
@@ -104,11 +130,7 @@ findLobbys = do
 
   now <- liftIO getCurretISOTime
   let past = addUTCTime (-60 * 60 :: NominalDiffTime) (now)
-
-  (mLobbys :: [Maybe Lobby]) <- findObjects
-    ["created" =: ["$gte" =: val past], "public" =: val True]
-    []
-  let lobbys = [ lobby | (Just lobby) <- mLobbys ]
+  lobbys <- findAvailableLobbys Nothing True
   json $ (sucessJson sucessCode lobbys)
 
 {-
@@ -132,12 +154,13 @@ joinLobby salt = do
     >>= checkHost user
     >>= userJoinLobby user
   case (elobby) of
-    (Left  error) -> do
-      setStatus badRequest400 
+    (Left error) -> do
+      setStatus badRequest400
       json $ errorJson errorJoinLobby error
     (Right lobby) -> do
       json $ sucessJson sucessCode lobby
  where
+  findLobbyBySalt :: String -> AppHandle (HVect xs) (Either String Lobby)
   findLobbyBySalt salt = do
     now <- liftIO getCurrentTime
     let past = addUTCTime (-60 * 60 :: NominalDiffTime) now
@@ -147,18 +170,23 @@ joinLobby salt = do
       Nothing      -> return (Left ("Could not find Lobby with salt: " ++ salt))
       (Just lobby) -> return (Right lobby)
 
+  checkStarted
+    :: Either String Lobby -> AppHandle (HVect xs) (Either String Lobby)
   checkStarted (Left  error) = return (Left error)
   checkStarted (Right lobby) = if (launched lobby)
     then return (Left "Game has already started.")
     else return (Right lobby)
 
+  checkJoined
+    :: User -> Either String Lobby -> AppHandle (HVect xs) (Either String Lobby)
   checkJoined _ (Left error) = return (Left error)
   checkJoined user (Right lobby) =
     let (Key _id) = uid user
     in  if (_id `elem` (player lobby))
           then return (Left "Already joined Lobby")
           else return (Right lobby)
-
+  checkKickedPlayer
+    :: User -> Either String Lobby -> AppHandle (HVect xs) (Either String Lobby)
   checkKickedPlayer _ (Left error) = return (Left error)
   checkKickedPlayer user (Right lobby) =
     let (Key _id) = uid user
@@ -166,6 +194,8 @@ joinLobby salt = do
           then return (Left "You have been kicked from this lobby")
           else return (Right lobby)
 
+  checkHost
+    :: User -> Either String Lobby -> AppHandle (HVect xs) (Either String Lobby)
   checkHost _ (Left error) = return (Left error)
   checkHost user (Right lobby) =
     let (Key _id) = uid user
@@ -173,6 +203,8 @@ joinLobby salt = do
           then return (Left "You cannot join your own Lobby")
           else return (Right lobby)
 
+  userJoinLobby
+    :: User -> Either String Lobby -> AppHandle (HVect xs) (Either String Lobby)
   userJoinLobby _    (Left  error) = return (Left error)
   userJoinLobby user (Right lobby) = do
     let (Key _id) = uid user
@@ -192,7 +224,8 @@ leaveLobby :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 leaveLobby lobbyId = do
   oldCtx <- getContext
   let user :: User = (findFirst oldCtx)
-  elobby <- findLobbyById lobbyId
+  elobby <-
+    findLobbyById lobbyId
     >>= isHost user
     >>= checkPlayerIsInLobby user
     >>= updateLobby user
@@ -290,8 +323,7 @@ kickPlayer lobbyId playerId = do
 @apiHeader {String} auth Users auth Token.
 @apiDescription get the status of the current lobby (in case you are a part of it)
 -}
-getStatus
-  :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
+getStatus :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 getStatus lobbyId = do
   oldCtx <- getContext
   let user :: User = (findFirst oldCtx)
@@ -315,8 +347,7 @@ getStatus lobbyId = do
 @apiHeader {String} auth Users auth Token.
 @apiDescription launch a game (players must be 4<=p<=6)
 -}
-launchGame
-  :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
+launchGame :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 launchGame lobbyId = do
   elobby <- findLobbyById lobbyId >>= areEnoughPlayer >>= updateLobby
   case elobby of

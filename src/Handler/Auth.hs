@@ -42,7 +42,7 @@ import           Model.Utils
 import           Control.Monad.Trans.Reader     ( ReaderT )
 import           Database.MongoDB               ( Pipe )
 import           Controller.Utils               ( parseBody )
-
+import qualified Data.ByteString.Char8         as BS8
 
 {-
 Creates a new session for the user and adds it to the database.
@@ -59,11 +59,11 @@ logUserIn user = do
   let logedInUser = user { sessions = (sessionId : (sessions user)) }
   (updateObject logedInUser)
   now <- liftIO _getNow
-  let payload = SAP { user      = logedInUser {sessions=[]}
+  let payload = SAP { user      = logedInUser { sessions = [] }
                     , sessionid = sessionId
                     , ttl       = now + 15 * 60 * 1000
                     }
-  jwt <-  sessionToJWT payload
+  jwt <- sessionToJWT payload
   return (logedInUser, jwt)
 
 
@@ -99,10 +99,17 @@ loginHandle = do
       setHeader "auth" jwt
       json (sucessJson sucessCode logedInUser)
  where
-  checkUser :: Either String (String, String) -> ActionCtxT ctx (AppStateM sess) (Either String User)
+{-   validateEmail:: Either String (String, String) -> ActionCtxT ctx (AppStateM sess) (Either String (String, String))
+  validateEmail (Left error) = return (Left error)
+  validateEmail (Right (email, password)) = do -}
+
+
+  checkUser
+    :: Either String (String, String)
+    -> ActionCtxT ctx (AppStateM sess) (Either String User)
   checkUser (Left  error            ) = return (Left error)
   checkUser (Right (email, password)) = do
-    (eUser :: Maybe User ) <- findObject ["email" =: val email]
+    (eUser :: Maybe User) <- findObject ["email" =: val email]
     case eUser of
       Nothing     -> return (Left "User not avaiable")
       (Just user) -> return (validateUser password user)
@@ -111,7 +118,7 @@ loginHandle = do
     validateUser :: String -> User -> (Either String User)
     validateUser upw user =
       let pwHash = fromMaybe "" (password_hash user)
-      in  if validatePassword (pack (pwHash)) (pack upw)
+      in  if validatePassword (pack (pwHash)) (pack (upw ++ pwsalt user))
             then (Right user)
             else (Left "invalid password")
 
@@ -155,33 +162,47 @@ registerHandle = do
     :: Either String (String, String, String) -> IO (Either String User)
   createuser (Left  error                      ) = return (Left error)
   createuser (Right (email, username, password)) = do
-    passwordHash <- liftIO
-      ((hashPasswordUsingPolicy fastBcryptHashingPolicy (pack password)))
-    let newUser = User { uid           = NewKey
-                       , email         = email
-                       , password_hash = (fmap unpackStrict8 passwordHash)
-                       , username      = username
-                       , sessions      = []
-                       }
-    return (Right newUser)
+    mSalt <- liftIO $ genSaltUsingPolicy fastBcryptHashingPolicy
+    if mSalt == Nothing
+      then return (Left "internal Server error")
+      else do
+        let (Just salt) = mSalt
+        let pwSalt      = password ++ (BS8.unpack salt)
+        passwordHash <- liftIO
+          ((hashPasswordUsingPolicy fastBcryptHashingPolicy (pack pwSalt)))
+        let newUser = User { uid           = NewKey
+                           , email         = email
+                           , password_hash = (fmap unpackStrict8 passwordHash)
+                           , username      = username
+                           , sessions      = []
+                           , pwsalt        = BS8.unpack salt
+                           }
+        return (Right newUser)
 
-  validateEmail :: Either String User -> ActionCtxT ctx (AppStateM sess) (Either String User)
+  validateEmail
+    :: Either String User
+    -> ActionCtxT ctx (AppStateM sess) (Either String User)
   validateEmail (Left  error) = return (Left error)
   validateEmail (Right user ) = do
-    (existingUser :: Maybe User) <- (findObject ["email" =: val (email user)]) 
+    (existingUser :: Maybe User) <- (findObject ["email" =: val (email user)])
     case existingUser of
       (Just user) -> return (Left "user with this email already exists.")
       (Nothing  ) -> return (Right user)
 
-  validateUsername :: Either String User -> ActionCtxT ctx (AppStateM sess) (Either String User)
+  validateUsername
+    :: Either String User
+    -> ActionCtxT ctx (AppStateM sess) (Either String User)
   validateUsername (Left  error) = return (Left error)
   validateUsername (Right user ) = do
-    (existingUser :: Maybe User) <- (findObject ["username" =: val (username user)])
+    (existingUser :: Maybe User) <-
+      (findObject ["username" =: val (username user)])
     case existingUser of
       (Just user) -> return (Left "Username is already taken.")
       (Nothing  ) -> return (Right user)
 
-  storeUser :: Either String User -> ActionCtxT ctx (AppStateM sess)  (Either String User)
+  storeUser
+    :: Either String User
+    -> ActionCtxT ctx (AppStateM sess) (Either String User)
   storeUser (Left  error) = return (Left error)
   storeUser (Right user ) = do
     insertedUser <- insertObject user

@@ -32,12 +32,20 @@ jobs:
     - stage: "Build & Test" 
       name: "Build & Test"
       script: |
-        source .tenv && stack build 
+        stack build 
         stack test
       env: # setup envs for connecting to local test db
         - DB_ADDR="127.0.0.1"
         - DB_NAME="test"
         - DB_PW=""
-        - DB_UNAME=""
-    - stage: "Generate Doc"
-      script: .travis/genDoc.sh
+        - DB_USER=""
+        - DB_USE_REPLICA="false"
+        - PORT="8080"
+    - stage: "Deploy"
+      script: |
+        stack build
+        sh .travis/genDoc.sh
+      before_deploy: .travis/updateGit.sh
+      deploy:
+        provider: heroku
+        strategy: git
