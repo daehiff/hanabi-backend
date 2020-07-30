@@ -42,8 +42,10 @@ jobs:
       before_deploy: |
         sh .travis/genDoc.sh
         rm Makefile 
+        rm .gitignore
         git add .
         git commit -m "Deploy Build Nr.: $TRAVIS_BUILD_NUMBER"
+
       deploy:
         provider: heroku
         api_key: $HEROKU_API_KEY

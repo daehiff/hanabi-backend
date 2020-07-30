@@ -66,10 +66,12 @@ The backend needs to be configured, by a .env file before running create a file 
 
 ```bash
 export DB_ADDR="localhost"
-export DB_NAME="tests"
+export DB_NAME="dev"
 export DB_USE_REPLICA="false"
 export DB_USER=""
 export DB_PW=""
+export PORT="8080"
+"
 
 ```
 ## Hints

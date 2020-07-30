@@ -46,30 +46,35 @@ defaultUsers =
          , email         = "samplemail@mail.com"
          , password_hash = Just "supersaveandsecure"
          , sessions      = []
+         , pwsalt = ""
          }
   , User { uid           = NewKey
          , username      = "annika"
          , email         = "samplemail1@mail.com"
          , password_hash = Just "supersaveandsecure"
          , sessions      = []
+         , pwsalt = ""
          }
   , User { uid           = NewKey
          , username      = "davidH."
          , email         = "samplemail2@mail.com"
          , password_hash = Just "supersaveandsecure"
          , sessions      = []
+         , pwsalt = ""
          }
   , User { uid           = NewKey
          , username      = "patsch"
          , email         = "samplemail3@mail.com"
          , password_hash = Just "supersaveandsecure"
          , sessions      = []
+         , pwsalt = ""
          }
   , User { uid           = NewKey
          , username      = "leonBaum"
          , email         = "samplemail4@mail.com"
          , password_hash = Just "supersaveandsecure"
          , sessions      = []
+         , pwsalt = ""
          }
   ]
 
