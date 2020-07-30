@@ -42,10 +42,7 @@ jobs:
         - DB_USE_REPLICA="false"
         - PORT="8080"
     - stage: "Deploy"
-      script: |
-        stack build
-        sh .travis/genDoc.sh
-      before_deploy: cd $TRAVIS_BUILD_DIR && mv -f ./.travis/.gitignore .gitignore 
+      before_deploy: sh .travis/genDoc.sh 
       deploy:
         provider: heroku
         api_key: $HEROKU_API_KEY
