@@ -38,7 +38,9 @@ jobs:
         - DB_ADDR="127.0.0.1"
         - DB_NAME="test"
         - DB_PW=""
-        - DB_UNAME=""
+        - DB_USER=""
+        - DB_USE_REPLICA="false"
+        - PORT="8080"
     - stage: "Deploy"
       script: |
         stack build
@@ -46,3 +48,4 @@ jobs:
       before_deploy: .travis/updateGit.sh
       deploy:
         provider: heroku
+        strategy: git

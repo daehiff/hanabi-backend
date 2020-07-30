@@ -27,6 +27,7 @@ testUser = User { uid           = NewKey
                 , email         = "mail@mailprovider.com"
                 , password_hash = Just "supersaveandsecure"
                 , sessions      = []
+                , pwsalt        = ""
                 }
 
 userRegisterJSON :: User -> ByteString
