@@ -49,4 +49,3 @@ jobs:
       deploy:
         provider: heroku
         api_key: $HEROKU_API_KEY
-        strategy: git
