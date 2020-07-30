@@ -62,7 +62,8 @@ createConfig = do
                       , useReplica = useReplica
                       , dbName     = dbName
                       }
-  return AppConfig { dbConf = dbConf, port = 8080, jwtSecret="test" }
+  port <- read <$> getEnv "PORT"
+  return AppConfig { dbConf = dbConf, port = port, jwtSecret="test" }
 
 
 runApp :: IO ()

@@ -47,8 +47,6 @@ userLoginJSON user =
 authTest = (before_ beforeEach) $ do
   describe "POST /auth/register" $ do
     it "registers the user correctly" $ do
-      --request <- post "/auth/register" (userRegisterJSON testUser)
-      --mString <- checkUser (simpleHeaders request) (simpleBody request) 
       post "/auth/register" (userRegisterJSON testUser) `shouldRespondWith` 200
     it "gives correct and expected error messages" $ do
       post "/auth/register" (userRegisterJSON testUser) `shouldRespondWith` 200
