@@ -1,4 +1,6 @@
 run:
+	stack run
+runl:
 		source .env && ghcid \
 				--allow-eval \
 				--command "stack ghci" \

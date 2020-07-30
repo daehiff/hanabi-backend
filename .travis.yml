@@ -45,7 +45,7 @@ jobs:
       script: |
         stack build
         sh .travis/genDoc.sh
-      before_deploy: cd $TRAVIS_BUILD_DIR && mv -f ./.travis/.gitignore .gitignore && rm Makefile
+      before_deploy: cd $TRAVIS_BUILD_DIR && mv -f ./.travis/.gitignore .gitignore 
       deploy:
         provider: heroku
         api_key: $HEROKU_API_KEY
