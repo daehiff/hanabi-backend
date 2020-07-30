@@ -33,7 +33,9 @@ import           Control.Monad.Trans
 import           Control.Monad                  ( liftM )
 
 import qualified Data.Text                     as T
-import           Data.Text.Encoding             ( encodeUtf8, decodeUtf8 )
+import           Data.Text.Encoding             ( encodeUtf8
+                                                , decodeUtf8
+                                                )
 import           Data.ByteString.Lazy           ( fromStrict
                                                 , toStrict
                                                 )
@@ -80,14 +82,12 @@ If session Expried reenforce login
 
 This migitates the database requests per user request for checking the session
 -}
-updateJWTHook
-  :: ListContains n SAP xs
-  => ActionCtxT (HVect xs) (WebStateM Pipe p AppConfig) (HVect xs)
+updateJWTHook :: ListContains n SAP xs => AppHandle (HVect xs) (HVect xs)
 updateJWTHook = do
   oldCtx <- getContext
   let oldPayload :: SAP = (findFirst oldCtx)
   now <- liftIO _getNow
-  let newTTL  = now + 15 * 60 * 1000 
+  let newTTL  = now + 15 * 60 * 1000
   let payload = oldPayload { ttl = newTTL }
   jwt <- sessionToJWT payload
   setHeader "auth" jwt
@@ -102,17 +102,14 @@ sessionToJWT payload = do
       >>= (\appCfg -> do
             liftIO $ return $ jwtSecret appCfg
           )
-  let (Right jwt) = hmacEncode HS384 (BS8.pack jwtSecret) (toStrict (encode payload))
+  let (Right jwt) =
+        hmacEncode HS384 (BS8.pack jwtSecret) (toStrict (encode payload))
   return (decodeUtf8 (unJwt jwt))
 
 {-
 Auth hook that checks the users JWT
 -}
-authHook
-  :: ActionCtxT
-       (HVect xs)
-       (WebStateM Pipe p AppConfig)
-       (HVect (User ': SAP ': xs))
+authHook :: AppHandle (HVect xs) (HVect (User ': SAP ': xs))
 authHook = do
   oldCtx             <- getContext
   jwt                <- (header "auth")
@@ -146,8 +143,7 @@ authHook = do
       (Just payload) -> return (Right payload)
 
   validatePayload
-    :: Either String SAP
-    -> ActionCtxT (HVect xs) (WebStateM Pipe p AppConfig) (Either String SAP)
+    :: Either String SAP -> AppHandle (HVect xs) (Either String SAP)
   validatePayload (Left  error  ) = return (Left error)
   validatePayload (Right payload) = do
     now <- liftIO $ _getNow
@@ -164,7 +160,7 @@ authHook = do
             let (Just user) = mUser
             let newPayload  = payload { user = user }
             if (sessionid newPayload) `elem` (sessions user)
-              then return (Right newPayload { user = user {sessions=[]}})
+              then return (Right newPayload { user = user { sessions = [] } })
               else return (Left "Session Expired, please login again.")
 
   isValidTTL :: Integer -> Integer -> Bool

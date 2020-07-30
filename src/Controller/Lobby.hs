@@ -2,25 +2,25 @@
 
 module Controller.Lobby where -- no control
 
-import Model
-import Model.Utils
+import           Model
+import           Model.Utils
 import           System.Random                  ( randomRIO )
-import Responses
-import Web.Spock (ActionCtxT)
-generateSalt :: IO String
-generateSalt = do
-    adjectives <- getWords "./static/wordlist-adjectives.txt"
-    nouns      <- getWords "./static/wordlist-nouns.txt"
-    let adjective = "cool"
-    let noun      = "language"
-    adjIdx  <- randomRIO (0, length adjectives - 1)
-    nounIdx <- randomRIO (0, length adjectives - 1)
-    return ((adjectives !! adjIdx) ++ "-" ++ (nouns !! nounIdx))
-  where 
-    getWords :: FilePath -> IO [String]
-    getWords file = do
-      contents <- readFile file
-      return (lines contents)
+import           Responses
+import           Web.Spock                      ( ActionCtxT )
+
+generateSalt :: [String] -> IO String
+generateSalt salts = do
+  adjectives <- getWords "./static/wordlist-adjectives.txt"
+  nouns      <- getWords "./static/wordlist-nouns.txt"
+  adjIdx     <- randomRIO (0, length adjectives - 1)
+  nounIdx    <- randomRIO (0, length adjectives - 1)
+  let salt = ((adjectives !! adjIdx) ++ "-" ++ (nouns !! nounIdx))
+  if salt `elem` salts then generateSalt salts else return salt
+ where
+  getWords :: FilePath -> IO [String]
+  getWords file = do
+    contents <- readFile file
+    return (lines contents)
 
 
 findLobbyById :: String -> ActionCtxT ctx (AppStateM sess) (Either String Lobby)
