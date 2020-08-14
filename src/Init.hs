@@ -47,6 +47,8 @@ import           System.Environment             ( getEnv
                                                 )
 import Responses
 
+-----
+import Model.BSONExtention (ObjectKey(..))
 
 createConfig :: IO AppConfig
 createConfig = do
@@ -77,6 +79,7 @@ runApp = do
 
 app :: App ()
 app = do
+  get ("/game/test") $ test
   prehook initHook $ do
     middleware (staticPolicy (addBase "./static/doc"))
     get root $ do
@@ -95,6 +98,10 @@ app = do
       get ("/lobby" <//> var <//> "status") $ getStatus
       post ("/lobby" <//> var <//> "launch") $ launchGame
 
-
+test :: AppHandle () ()
+test = do
+  let game = Game {gid = NewKey, currentPlayer = "1234", players = ["12", "123", "1234"], hints = 8, lives = 2, drawPile = ["23", "345"],discardPile = ["453", "4453"], redPile = 3, greenPile = 2, bluePile = 0, yellowPile = 5, whitePile = 2, rainbowPile = 4}
+  game_ <- insertObject game
+  json game_
 
 

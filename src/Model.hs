@@ -112,5 +112,86 @@ data Lobby = Lobby {lid:: ObjectKey,
 instance MongoObject Lobby where
   collection _ = "lobbys"
 
-  insertId id session = session { lid = Key (show id) }
+  insertId id lobby = lobby { lid = Key (show id) }
+
+data Settings = Settings {amtLives:: Int,
+                          amtHints:: Int,
+                          level:: Level,
+                          isRainbow:: Bool}   
+                    deriving (Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
+
+data Level = Beginner | Easy | Middle | Hard 
+              deriving (Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
+
+map_level_string :: Level -> String
+map_level_string Beginner = "Beginner"
+map_level_string Easy     = "Easy"
+map_level_string Middle   = "Middle"
+map_level_string Hard     = "Hard"
+
+map_string_level ("Beginner") = Just Beginner
+map_string_level ("Easy"    ) = Just Easy
+map_string_level ("Middle"  ) = Just Middle
+map_string_level ("Hard"    ) = Just Hard
+map_string_level _            = Nothing
+
+instance Val Level where
+  val level = val (map_level_string level)
+  cast' (String level) = map_string_level level
+  cast' _              = Nothing
+
+
+data Game = Game {gid:: ObjectKey,
+                  currentPlayer:: String,
+                  players:: [String],
+                  hints:: Int,
+                  lives:: Int,
+                  drawPile:: [String],
+                  discardPile:: [String],
+                  redPile:: Int,
+                  greenPile:: Int,
+                  bluePile:: Int,
+                  yellowPile:: Int,
+                  whitePile:: Int,
+                  rainbowPile:: Int}
+                  deriving(Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
+
+instance MongoObject Game where
+  collection _ = "games"
+
+  insertId id game = game {gid = Key (show id)}
+
+data Player = Player {pid:: ObjectKey,
+                      cards:: [String],
+                      explicitHints:: [(Either Color Int, String)]}
+                      --implicitHints:: [(String, String)]}
+                      deriving(Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
+
+instance MongoObject Player where
+  collection _ = "players"
+
+  insertId id player = player {pid = Key (show id)}
+
+data Hint = Hint {hid:: ObjectKey,
+                  red:: Maybe Bool,
+                  blue:: Maybe Bool,
+                  green:: Maybe Bool,
+                  yellow:: Maybe Bool,
+                  white:: Maybe Bool,
+                  rainbow:: Maybe Bool,
+                  one:: Maybe Bool,
+                  two:: Maybe Bool,
+                  three:: Maybe Bool,
+                  four:: Maybe Bool,
+                  five:: Maybe Bool}
+                  deriving(Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
+
+instance MongoObject Hint where
+  collection _ = "hints"
+
+  insertId id hint = hint {hid = Key (show id)}
+
+
+
+-- $> Hint {hid = NewKey, red = Just True, blue = Nothing, green = Nothing, yellow = Just True, white = Nothing, rainbow = Nothing, one = Just True, two = Nothing, three = Just False, four = Just False, five = Nothing}
 

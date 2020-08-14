@@ -23,9 +23,7 @@ import           Data.HVect              hiding ( length
                                                 , (!!)
                                                 )
 import           Data.Time.Clock
-import           Model                          ( User(..)
-                                                , Lobby(..)
-                                                )
+import           Model
 import           Model.Utils
 import           Control.Monad.Trans
 import           Controller.Lobby               ( findLobbyById
@@ -45,7 +43,7 @@ import           Database.MongoDB               ( Pipe )
 import           Control.Monad.Trans.Reader     ( ReaderT )
 
 import           Controller.Utils               ( getCurretISOTime )
-
+import Controller.Game (createGame)
 
 findAvailableLobbys :: Maybe String -> Bool -> AppHandle (HVect xs) ([Lobby])
 findAvailableLobbys Nothing public = do -- TODO is here a error?
@@ -340,12 +338,12 @@ getStatus lobbyId = do
       else return (Right lobby)
 
 {-
-@api {post} {{base_url}}/lobby/:lobbyId/launch launch Gamee
+@api {post} {{base_url}}/lobby/:lobbyId/launch launch Game
 @apiName launch 
 @apiGroup Lobby
 @apiParam {String} lobbyId Id of the current Lobby 
 @apiHeader {String} auth Users auth Token.
-@apiDescription launch a game (players must be 4<=p<=6)
+@apiDescription launch a game (players must be 2<=p<=5)
 -}
 launchGame :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 launchGame lobbyId = do
@@ -360,17 +358,22 @@ launchGame lobbyId = do
   --areEnoughPlayer :: Either String Lobby -> IO (Either String Lobby)
   areEnoughPlayer (Left  error) = return (Left error)
   areEnoughPlayer (Right lobby) = do
-    if (length ((lobbyHost lobby) : player lobby)) < 4
+    if (length ((lobbyHost lobby) : player lobby)) < 2
       then return (Left "To few player in the Lobby.")
       else do
-        if ((length (player lobby)) > 6)
+        if ((length (player lobby)) > 5)
           then return (Left "To much player are in the Lobby.")
           else return (Right lobby)
-  --updateLobby :: Either String Lobby -> IO (Either String Lobby)
+  updateLobby :: Either String Lobby -> AppHandle (HVect xs) (Either String Lobby)
   updateLobby (Left  error) = return (Left error)
   updateLobby (Right lobby) = do
-    -- TODO create new game ect. :)
-    let newLobby = lobby { launched = True }
+    let settings = Settings {amtLives = 3,
+                          amtHints = 8,
+                          level = Hard,
+                          isRainbow = True}
+    game <- createGame ((lobbyHost lobby):(player lobby)) settings
+    let (Key _gid) = gid game
+    let newLobby = lobby { launched = True, gameId = Just _gid }
     updateObject newLobby
     return (Right newLobby)
 
