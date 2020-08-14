@@ -36,11 +36,11 @@ errorJson code message = object
 sucessJson :: ToJSON a => Int -> a -> Value
 sucessJson code message = object
   [ "error" .= object []
-  , "sucess" .= object ["code" .= code, "message" .= message]
+  , "success" .= object ["code" .= code, "message" .= message]
   ]
 
 
-{-Below the error sucess codes are defined-}
+{-Below the error success codes are defined-}
 
 sucessCode :: Int
 sucessCode = 0
