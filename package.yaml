@@ -46,6 +46,7 @@ dependencies:
   - hslogger
   - random-shuffle
   - array
+  - split
 
 library:
   source-dirs:

@@ -142,8 +142,8 @@ instance Val Level where
 
 
 data Game = Game {gid:: ObjectKey,
-                  currentPlayer:: String,
-                  players:: [String],
+                  currentPlayer:: (String, String),
+                  players:: [(String, String)],
                   hints:: Int,
                   lives:: Int,
                   drawPile:: [String],
@@ -162,6 +162,7 @@ instance MongoObject Game where
   insertId id game = game {gid = Key (show id)}
 
 data Player = Player {pid:: ObjectKey,
+                      correspondingUserID:: String,
                       cards:: [String],
                       explicitHints:: [(Either Color Int, String)]}
                       --implicitHints:: [(String, String)]}

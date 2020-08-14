@@ -43,7 +43,7 @@ import           Database.MongoDB               ( Pipe )
 import           Control.Monad.Trans.Reader     ( ReaderT )
 
 import           Controller.Utils               ( getCurretISOTime )
-import Controller.Game (createGame)
+import           Controller.Game                ( createGame )
 
 findAvailableLobbys :: Maybe String -> Bool -> AppHandle (HVect xs) ([Lobby])
 findAvailableLobbys Nothing public = do -- TODO is here a error?
@@ -92,9 +92,9 @@ createLobby = do
       setStatus badRequest400
       json $ errorJson errorCreateLobby error
     (Right public) -> do
-      lobbys     <- findAvailableLobbys Nothing True
-      let salts = [ salt lobby | lobby <- lobbys ]
-      
+      lobbys <- findAvailableLobbys Nothing True
+      let salts        = [ salt lobby | lobby <- lobbys ]
+
       let host :: User = (findFirst oldCtx)
       let (Key _id)    = uid host
       now  <- liftIO getCurretISOTime
@@ -364,14 +364,16 @@ launchGame lobbyId = do
         if ((length (player lobby)) > 5)
           then return (Left "To much player are in the Lobby.")
           else return (Right lobby)
-  updateLobby :: Either String Lobby -> AppHandle (HVect xs) (Either String Lobby)
+  updateLobby
+    :: Either String Lobby -> AppHandle (HVect xs) (Either String Lobby)
   updateLobby (Left  error) = return (Left error)
   updateLobby (Right lobby) = do
-    let settings = Settings {amtLives = 3,
-                          amtHints = 8,
-                          level = Hard,
-                          isRainbow = True}
-    game <- createGame ((lobbyHost lobby):(player lobby)) settings
+    let settings = Settings { amtLives  = 3
+                            , amtHints  = 8
+                            , level     = Hard
+                            , isRainbow = True
+                            }
+    game <- createGame ((lobbyHost lobby) : (player lobby)) settings
     let (Key _gid) = gid game
     let newLobby = lobby { launched = True, gameId = Just _gid }
     updateObject newLobby
