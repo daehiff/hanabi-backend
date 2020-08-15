@@ -29,7 +29,7 @@ getGameStatus gameid = do
         oldCtx <- getContext
         let user :: User = (findFirst oldCtx)
         let (Key _uid) = uid user
-        let onlyOtherPlayers = [player | player <- (players game), _uid /= (correspondingUserID player)]
+        let onlyOtherPlayers = [player | player <- (players game), _uid /= (playerId player)]
         let newGame = game {players = onlyOtherPlayers}
         return (Right newGame)
     getGameFromDB:: (ListContains n User xs) => String -> AppHandle (HVect xs) (Either String Game)

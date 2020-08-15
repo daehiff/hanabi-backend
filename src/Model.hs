@@ -51,7 +51,7 @@ instance Val Color where
   cast' (String color) = map_string_color color
   cast' _              = Nothing
 
-data Card = Card {cid::ObjectKey , color::Color, number::Int}
+data Card = Card {cid::ObjectKey , color::Color, number::Int, hintColor::[Color], hintNumber:: Maybe Int}
 
               deriving(Generic, Show, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
 
@@ -167,7 +167,7 @@ instance MongoObject Game where
 
   insertId id game = game { gid = Key (show id) }
 
-data Player = Player {correspondingUserID:: String,
+data Player = Player {playerId:: String,
                       name:: String,
                       cards:: [String],
                       explicitHints:: [(Either Color Int, String)]}

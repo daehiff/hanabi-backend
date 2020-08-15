@@ -14,6 +14,7 @@ import           Data.HVect              hiding ( length
 import           Controller.Utils               ( shuffle )
 import           Control.Monad                  ( forM )
 import           Data.List.Split                ( chunksOf )
+import           Data.List                      ( find )
 
 createDrawPile :: Bool -> IO [Card]
 createDrawPile isRainbow = do
@@ -24,7 +25,7 @@ createDrawPile isRainbow = do
         )
   let numbers = [1, 1, 1, 2, 2, 3, 3, 4, 4, 5]
   let cards =
-        [ Card { cid = NewKey, color = color, number = number }
+        [ Card { cid = NewKey, color = color, number = number, hintColor = [], hintNumber = Nothing }
         | color  <- colors
         , number <- numbers
         ]
@@ -46,13 +47,13 @@ createGame users settings = do
   drawPile <- (liftIO $ createDrawPile (isRainbow settings))
     >>= \pile -> forM pile insertObject
   let drawPileIDs = [ _cid | (Key _cid) <- map cid drawPile ]
-  let players = [ Player {correspondingUserID = let (Key _uid) = uid user in _uid
+  let players = [ Player {playerId = let (Key _uid) = uid user in _uid
              , name = username user
              , cards               = []
              , explicitHints       = []
              }| user <- users]
   let (newPlayers, restCards) = distributeCards players drawPileIDs
-  let ( _uid) = correspondingUserID $ newPlayers !! 0
+  let ( _uid) = playerId $ newPlayers !! 0
   let game = Game { gid           = NewKey
                   , currentPlayer = _uid
                   , players       = newPlayers
@@ -68,3 +69,18 @@ createGame users settings = do
                   , rainbowPile   = 0
                   }
   insertObject game
+
+
+giveHint:: (Either Color Int) -> String -> Game -> AppHandle (HVect xs) Game
+giveHint either id game = do
+  let (Just player) = find (\player -> playerId player == id) ((players game))
+  (cardObjects :: [Maybe Card]) <- forM (cards player) findById
+  let cards = [card | (Just card) <- cardObjects]
+  let modifiedCards = map (updateCard either) cards
+  forM modifiedCards updateObject
+  return game
+
+
+updateCard:: (Either Color Int) -> Card -> Card
+updateCard (Left hcolor) card = if (color card) == hcolor || (color card) == Rainbow then card{hintColor = [hcolor]} else card
+updateCard (Right hnumber) card = if (number card) == hnumber then card{hintNumber = Just hnumber} else card
