@@ -44,6 +44,8 @@ import           Control.Monad.Trans.Reader     ( ReaderT )
 
 import           Controller.Utils               ( getCurretISOTime )
 import           Controller.Game                ( createGame )
+import           Control.Monad                  ( forM )
+
 
 findAvailableLobbys :: Maybe String -> Bool -> AppHandle (HVect xs) ([Lobby])
 findAvailableLobbys Nothing public = do -- TODO is here a error?
@@ -373,7 +375,8 @@ launchGame lobbyId = do
                             , level     = Hard
                             , isRainbow = True
                             }
-    game <- createGame ((lobbyHost lobby) : (player lobby)) settings
+    (userObjects :: [Maybe User]) <- forM ((lobbyHost lobby) : (player lobby)) findById
+    game <- createGame [user | (Just user) <- userObjects] settings
     let (Key _gid) = gid game
     let newLobby = lobby { launched = True, gameId = Just _gid }
     updateObject newLobby

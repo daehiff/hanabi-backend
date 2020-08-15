@@ -11,14 +11,20 @@ import           Data.Aeson                     ( ToJSON(..)
                                                 , decode
                                                 , encode
                                                 )
-import           Data.Aeson.Types        hiding ( String ,Key)
-import           Database.MongoDB hiding (Key)
+import           Data.Aeson.Types        hiding ( String
+                                                , Key
+                                                )
+import           Database.MongoDB        hiding ( Key )
 import           GHC.Generics
 import qualified Data.Text                     as T
 import           System.Environment             ( getEnv )
 
 
-import           Model.Utils                     ( MongoObject(..), ObjectKey(..), FromBSON(..), ToBSON(..))
+import           Model.Utils                    ( MongoObject(..)
+                                                , ObjectKey(..)
+                                                , FromBSON(..)
+                                                , ToBSON(..)
+                                                )
 import           Data.Time.Clock
 data Color = Red | Blue | White | Yellow | Green | Rainbow
             deriving(Generic, Show, Eq , ToJSON, FromJSON, ToBSON, FromBSON)
@@ -78,7 +84,7 @@ instance FromJSON User where
                 , email         = email
                 , password_hash = Nothing
                 , sessions      = sessions
-                , pwsalt = ""
+                , pwsalt        = ""
                 }
 
 
@@ -117,10 +123,10 @@ instance MongoObject Lobby where
 data Settings = Settings {amtLives:: Int,
                           amtHints:: Int,
                           level:: Level,
-                          isRainbow:: Bool}   
+                          isRainbow:: Bool}
                     deriving (Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
 
-data Level = Beginner | Easy | Middle | Hard 
+data Level = Beginner | Easy | Middle | Hard
               deriving (Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
 
 map_level_string :: Level -> String
@@ -142,8 +148,8 @@ instance Val Level where
 
 
 data Game = Game {gid:: ObjectKey,
-                  currentPlayer:: (String, String),
-                  players:: [(String, String)],
+                  currentPlayer:: String,
+                  players:: [Player],
                   hints:: Int,
                   lives:: Int,
                   drawPile:: [String],
@@ -159,19 +165,14 @@ data Game = Game {gid:: ObjectKey,
 instance MongoObject Game where
   collection _ = "games"
 
-  insertId id game = game {gid = Key (show id)}
+  insertId id game = game { gid = Key (show id) }
 
-data Player = Player {pid:: ObjectKey,
-                      correspondingUserID:: String,
+data Player = Player {correspondingUserID:: String,
+                      name:: String,
                       cards:: [String],
                       explicitHints:: [(Either Color Int, String)]}
                       --implicitHints:: [(String, String)]}
                       deriving(Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
-
-instance MongoObject Player where
-  collection _ = "players"
-
-  insertId id player = player {pid = Key (show id)}
 
 data Hint = Hint {hid:: ObjectKey,
                   red:: Maybe Bool,
@@ -190,7 +191,7 @@ data Hint = Hint {hid:: ObjectKey,
 instance MongoObject Hint where
   collection _ = "hints"
 
-  insertId id hint = hint {hid = Key (show id)}
+  insertId id hint = hint { hid = Key (show id) }
 
 
 

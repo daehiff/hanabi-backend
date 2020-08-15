@@ -41,26 +41,21 @@ distributeCards players cardIDs = do
   
 
 
-createGame :: [String] -> Settings -> AppHandle (HVect xs) Game
+createGame :: [User] -> Settings -> AppHandle (HVect xs) Game
 createGame users settings = do
   drawPile <- (liftIO $ createDrawPile (isRainbow settings))
     >>= \pile -> forM pile insertObject
   let drawPileIDs = [ _cid | (Key _cid) <- map cid drawPile ]
-  let players = [ Player { pid                 = NewKey
-             , correspondingUserID = _uid
+  let players = [ Player {correspondingUserID = let (Key _uid) = uid user in _uid
+             , name = username user
              , cards               = []
              , explicitHints       = []
-             }| _uid <- users]
+             }| user <- users]
   let (newPlayers, restCards) = distributeCards players drawPileIDs
-  players <- forM newPlayers insertObject
-  let userPlayers = map
-        (\player ->
-          let (Key _id) = pid player in (correspondingUserID player, _id)
-        )
-        players
+  let ( _uid) = correspondingUserID $ newPlayers !! 0
   let game = Game { gid           = NewKey
-                  , currentPlayer = userPlayers !! 0
-                  , players       = userPlayers
+                  , currentPlayer = _uid
+                  , players       = newPlayers
                   , hints         = amtHints settings
                   , lives         = amtLives settings
                   , drawPile      = restCards
