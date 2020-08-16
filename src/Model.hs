@@ -29,27 +29,6 @@ import           Data.Time.Clock
 data Color = Red | Blue | White | Yellow | Green | Rainbow
             deriving(Generic, Show, Eq , ToJSON, FromJSON, ToBSON, FromBSON)
 
-map_color_string :: Color -> String
-map_color_string Red     = "Red"
-map_color_string Blue    = "Blue"
-map_color_string White   = "White"
-map_color_string Yellow  = "Yellow"
-map_color_string Green   = "Green"
-map_color_string Rainbow = "Rainbow"
-
-map_string_color ("Red"    ) = Just Red
-map_string_color ("Blue"   ) = Just Blue
-map_string_color ("White"  ) = Just White
-map_string_color ("Yellow" ) = Just Yellow
-map_string_color ("Green"  ) = Just Green
-map_string_color ("Rainbow") = Just Rainbow
-map_string_color _           = Nothing
-
-
-instance Val Color where
-  val color = val (map_color_string color)
-  cast' (String color) = map_string_color color
-  cast' _              = Nothing
 
 data Card = Card {cid::ObjectKey , color::Color, number::Int, hintColor::[Color], hintNumber:: Maybe Int}
 
@@ -129,23 +108,9 @@ data Settings = Settings {amtLives:: Int,
 data Level = Beginner | Easy | Middle | Hard
               deriving (Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
 
-map_level_string :: Level -> String
-map_level_string Beginner = "Beginner"
-map_level_string Easy     = "Easy"
-map_level_string Middle   = "Middle"
-map_level_string Hard     = "Hard"
 
-map_string_level ("Beginner") = Just Beginner
-map_string_level ("Easy"    ) = Just Easy
-map_string_level ("Middle"  ) = Just Middle
-map_string_level ("Hard"    ) = Just Hard
-map_string_level _            = Nothing
-
-instance Val Level where
-  val level = val (map_level_string level)
-  cast' (String level) = map_string_level level
-  cast' _              = Nothing
-
+data State = Running | LastRound | Lost | Won
+              deriving (Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
 
 data Game = Game {gid:: ObjectKey,
                   currentPlayer:: String,
@@ -154,12 +119,12 @@ data Game = Game {gid:: ObjectKey,
                   lives:: Int,
                   drawPile:: [String],
                   discardPile:: [String],
-                  redPile:: Int,
-                  greenPile:: Int,
-                  bluePile:: Int,
-                  yellowPile:: Int,
-                  whitePile:: Int,
-                  rainbowPile:: Int}
+                  piles::[(Color, Int)],
+                  state:: State,
+                  points:: Int,
+                  maxPoints:: Int,
+                  lastPlayerToMove:: Maybe String
+                  }
                   deriving(Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
 
 instance MongoObject Game where

@@ -14,15 +14,20 @@ import           Data.HVect              hiding ( length
 import           Controller.Utils               ( shuffle )
 import           Control.Monad                  ( forM )
 import           Data.List.Split                ( chunksOf )
-import           Data.List                      ( find )
+import           Data.List                      ( find
+                                                , findIndex
+                                                )
+
+getColorsForGame :: Bool -> [Color]
+getColorsForGame isRainbow =
+  (if isRainbow
+    then [Red, Green, Blue, White, Yellow, Rainbow]
+    else [Red, Green, Blue, White, Yellow]
+  )
 
 createDrawPile :: Bool -> IO [Card]
 createDrawPile isRainbow = do
-  let colors =
-        (if isRainbow
-          then [Red, Green, Blue, White, Yellow, Rainbow]
-          else [Red, Green, Blue, White, Yellow]
-        )
+  let colors  = getColorsForGame isRainbow
   let numbers = [1, 1, 1, 2, 2, 3, 3, 4, 4, 5]
   let cards =
         [ Card { cid        = NewKey
@@ -67,38 +72,147 @@ createGame users settings = do
         ]
   let (newPlayers, restCards) = distributeCards players drawPileIDs
   let (_uid)                  = playerId $ newPlayers !! 0
-  let game = Game { gid           = NewKey
-                  , currentPlayer = _uid
-                  , players       = newPlayers
-                  , hints         = amtHints settings
-                  , lives         = amtLives settings
-                  , drawPile      = restCards
-                  , discardPile   = []
-                  , redPile       = 0
-                  , greenPile     = 0
-                  , bluePile      = 0
-                  , yellowPile    = 0
-                  , whitePile     = 0
-                  , rainbowPile   = 0
-                  }
+  let game = Game
+        { gid              = NewKey
+        , currentPlayer    = _uid
+        , players          = newPlayers
+        , hints            = amtHints settings
+        , lives            = amtLives settings
+        , drawPile         = restCards
+        , discardPile      = []
+        , piles = [ (pileColor, 0)
+                  | pileColor <- getColorsForGame (isRainbow settings)
+                  ]
+        , state            = Running
+        , points           = 0
+        , maxPoints = 5 * (length $ getColorsForGame (isRainbow settings))
+        , lastPlayerToMove = Nothing
+        }
   insertObject game
 
 
-giveHint :: (Either Color Int) -> String -> Game -> AppHandle (HVect xs) Game
+giveHint
+  :: (Either Color Int)
+  -> String
+  -> Game
+  -> AppHandle (HVect xs) (Either String Game)
 giveHint hint id game = do
-    let (Just player) = find (\player -> playerId player == id) ((players game))
-    (cardObjects :: [Maybe Card]) <- forM (cards player) findById
-    let cards         = [ card | (Just card) <- cardObjects ]
-    let modifiedCards = map (updateCard hint) cards
-    forM modifiedCards updateObject
-    return game
-  where
-    updateCard :: (Either Color Int) -> Card -> Card
-    updateCard (Left hcolor) card =
-      if (color card) == hcolor || (color card) == Rainbow
-        then card { hintColor = [hcolor] }
-        else card
-    updateCard (Right hnumber) card = if (number card) == hnumber
-      then card { hintNumber = Just hnumber }
+  if (hints game) == 0
+    then return (Left "No hints available!")
+    else do
+      let (Just player) =
+            find (\player -> playerId player == id) ((players game))
+      (cardObjects :: [Maybe Card]) <- forM (cards player) findById
+      let cards         = [ card | (Just card) <- cardObjects ]
+      let modifiedCards = map (updateCard hint) cards
+      forM modifiedCards updateObject
+      let newGame = setNextPlayer game
+      return (Right newGame { hints = hints newGame - 1 })
+ where
+  updateCard :: (Either Color Int) -> Card -> Card
+  updateCard (Left hcolor) card =
+    if (color card) == hcolor || (color card) == Rainbow
+      then card { hintColor = [hcolor] }
       else card
+  updateCard (Right hnumber) card = if (number card) == hnumber
+    then card { hintNumber = Just hnumber }
+    else card
 
+
+playCard :: String -> String -> Game -> AppHandle (HVect xs) Game
+playCard _pid _cid game = do
+  ((mCardToPlay) :: Maybe Card) <- findById _cid
+  let (Just cardToPlay) = mCardToPlay
+  let (Just player) =
+        find (\_player -> _pid == (playerId _player)) (players game)
+  let newPlayer = removeCardFromPlayer player _cid
+  if doesPlayedCardFit game cardToPlay
+    then do
+      adjGame <- playedValidCard game cardToPlay
+      if didWin adjGame
+        then return adjGame { state = Won }
+        else continueGame adjGame newPlayer
+    else do
+      adjGame <- playedInvalidCard game _cid
+      if didLoose adjGame
+        then return adjGame { state = Lost }
+        else continueGame adjGame newPlayer
+ where
+  playedInvalidCard :: Game -> String -> AppHandle (HVect xs) Game
+  playedInvalidCard game _cid = do
+    let newGame = game { lives       = (lives game) - 1
+                       , discardPile = _cid : (discardPile game)
+                       }
+    return newGame
+  playedValidCard :: Game -> Card -> AppHandle (HVect xs) Game
+  playedValidCard game card = do
+    let newPiles = map
+          (\(_color, _number) -> if _color == color card
+            then (_color, _number + 1)
+            else (_color, _number)
+          )
+          (piles game)
+    return game { piles = newPiles, points = points game + 1 }
+
+  didWin :: Game -> Bool
+  didWin game = (points game) == (maxPoints game)
+
+  didLoose :: Game -> Bool
+  didLoose game = (lives game) == 0
+
+  continueGame :: Game -> Player -> AppHandle (HVect xs) Game
+  continueGame game _player = do
+    let (newPlayer, adjGame) = drawNewCard game _player
+    let _adjGame = adjGame
+          { players = map
+                        (\_playerObj ->
+                          if (playerId newPlayer) == (playerId _playerObj)
+                            then newPlayer
+                            else _playerObj
+                        )
+                        (players adjGame)
+          }
+    if shouldStartLastRound _adjGame
+      then return $ setNextPlayer
+        (_adjGame { state            = LastRound
+                  , lastPlayerToMove = Just (currentPlayer _adjGame)
+                  }
+        )
+      else return $ setNextPlayer _adjGame
+
+
+
+setNextPlayer :: Game -> Game
+setNextPlayer game =
+  let playerIndices = [ id | id <- (map playerId (players game)) ]
+      (Just index)  = findIndex
+        (\playerId -> playerId == (currentPlayer game))
+        playerIndices
+  in  game
+        { currentPlayer = playerIndices
+                            !! ((index + 1) `mod` length playerIndices)
+        }
+
+doesPlayedCardFit :: Game -> Card -> Bool
+doesPlayedCardFit game card =
+  let mpile = find (\(_color, _) -> _color == color card) (piles game)
+  in  _doesPlayedCardFit mpile card
+ where
+  _doesPlayedCardFit :: Maybe (Color, Int) -> Card -> Bool
+  _doesPlayedCardFit Nothing _ = False
+  _doesPlayedCardFit (Just (_color, _number)) card =
+    _number + 1 == (number card)
+
+
+removeCardFromPlayer :: Player -> String -> Player
+removeCardFromPlayer player _cid =
+  player { cards = [ card | card <- (cards player), card /= _cid ] }
+
+drawNewCard :: Game -> Player -> (Player, Game)
+drawNewCard game player =
+  ( player { cards = ((drawPile game) !! 0) : (cards player) }
+  , game { drawPile = drop 1 (drawPile game) }
+  )
+
+shouldStartLastRound :: Game -> Bool
+shouldStartLastRound game = length (drawPile game) == 0
