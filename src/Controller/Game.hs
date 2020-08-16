@@ -163,15 +163,8 @@ playCard _pid _cid game = do
   continueGame :: Game -> Player -> AppHandle (HVect xs) Game
   continueGame game _player = do
     let (newPlayer, adjGame) = drawNewCard game _player
-    let _adjGame = adjGame
-          { players = map
-                        (\_playerObj ->
-                          if (playerId newPlayer) == (playerId _playerObj)
-                            then newPlayer
-                            else _playerObj
-                        )
-                        (players adjGame)
-          }
+    let _adjGame =
+          adjGame { players = updatePlayer (players adjGame) newPlayer }
     if shouldStartLastRound _adjGame
       then return $ setNextPlayer
         (_adjGame { state            = LastRound
@@ -180,37 +173,46 @@ playCard _pid _cid game = do
         )
       else return $ setNextPlayer _adjGame
 
-discardCard:: String -> String -> Game -> AppHandle (HVect xs) Game
+discardCard :: String -> String -> Game -> AppHandle (HVect xs) Game
 discardCard _pid _cid game = do
-    ((mCardToPlay) :: Maybe Card) <- findById _cid
-    let (Just cardToPlay) = mCardToPlay
-    let (Just player) =
-          find (\_player -> _pid == (playerId _player)) (players game)
+  ((mCardToPlay) :: Maybe Card) <- findById _cid
+  let (Just cardToPlay) = mCardToPlay
+  
+  let (Just player) =
+        find (\_player -> _pid == (playerId _player)) (players game)
 
-    let newPlayer = removeCardFromPlayer player _cid
-    let discardedGame = game {discardPile = _cid : (discardPile game)}
+  let newPlayer       = removeCardFromPlayer player _cid
+  let discardedGame   = game { discardPile = _cid : (discardPile game) }
 
-    let handCards = concat [cards player | player <- players discardedGame]
-    let playableCardIDs = (drawPile discardedGame) ++ handCards
-    (mPlayableCards:: [Maybe Card]) <- forM playableCardIDs findById
-    let playableCards = [ card | (Just card) <- mPlayableCards]
-    if isGameOver discardedGame playableCards
-      then return discardedGame{state = Won}
-      else do
-        let (_player, _game) = drawNewCard discardedGame newPlayer
-        let newGame = discardedGame{hints = hints discardedGame + 1}
-        if shouldStartLastRound newGame
-          then return $ setNextPlayer
-            (newGame { state            = LastRound
-                      , lastPlayerToMove = Just (currentPlayer newGame)
-                      }
-            )
-          else return $ setNextPlayer newGame
-  where
-    isGameOver:: Game -> [Card] -> Bool
-    isGameOver game playableCards =
-      let playableCardsXPossibleCards = [((color card, number card),(_color, _number + 1)) | (_color, _number) <- piles game, card <- playableCards]
-      in any (\((c1, n1),(c2, n2)) -> c1 == c2 && n1 == n2) playableCardsXPossibleCards
+  let handCards = concat [ cards player | player <- players discardedGame ]
+  let playableCardIDs = (drawPile discardedGame) ++ handCards
+  (mPlayableCards :: [Maybe Card]) <- forM playableCardIDs findById
+  let playableCards = [ card | (Just card) <- mPlayableCards ]
+  
+  if isGameOver discardedGame playableCards
+    then return discardedGame { state = Won }
+    else do
+      let (_player, _game) = drawNewCard discardedGame newPlayer
+      let newGame = _game { hints   = hints _game + 1
+                          , players = updatePlayer (players _game) _player
+                          }
+      if shouldStartLastRound newGame
+        then return $ setNextPlayer
+          (newGame { state            = LastRound
+                   , lastPlayerToMove = Just (currentPlayer newGame)
+                   }
+          )
+        else return $ setNextPlayer newGame
+ where
+  isGameOver :: Game -> [Card] -> Bool
+  isGameOver game playableCards =
+    let playableCardsXPossibleCards =
+            [ ((color card, number card), (_color, _number + 1))
+            | (_color, _number) <- piles game
+            , card              <- playableCards
+            ]
+    in  any (\((c1, n1), (c2, n2)) -> c1 == c2 && n1 == n2)
+            playableCardsXPossibleCards
 
 
 setNextPlayer :: Game -> Game
@@ -247,3 +249,12 @@ drawNewCard game player =
 
 shouldStartLastRound :: Game -> Bool
 shouldStartLastRound game = length (drawPile game) == 0
+
+
+updatePlayer :: [Player] -> Player -> [Player]
+updatePlayer players _player = map
+  (\_playerObj -> if (playerId _player) == (playerId _playerObj)
+    then _player
+    else _playerObj
+  )
+  (players)
