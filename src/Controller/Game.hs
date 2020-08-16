@@ -180,6 +180,37 @@ playCard _pid _cid game = do
         )
       else return $ setNextPlayer _adjGame
 
+discardCard:: String -> String -> Game -> AppHandle (HVect xs) Game
+discardCard _pid _cid game = do
+    ((mCardToPlay) :: Maybe Card) <- findById _cid
+    let (Just cardToPlay) = mCardToPlay
+    let (Just player) =
+          find (\_player -> _pid == (playerId _player)) (players game)
+
+    let newPlayer = removeCardFromPlayer player _cid
+    let discardedGame = game {discardPile = _cid : (discardPile game)}
+
+    let handCards = concat [cards player | player <- players discardedGame]
+    let playableCardIDs = (drawPile discardedGame) ++ handCards
+    (mPlayableCards:: [Maybe Card]) <- forM playableCardIDs findById
+    let playableCards = [ card | (Just card) <- mPlayableCards]
+    if isGameOver discardedGame playableCards
+      then return discardedGame{state = Won}
+      else do
+        let (_player, _game) = drawNewCard discardedGame newPlayer
+        let newGame = discardedGame{hints = hints discardedGame + 1}
+        if shouldStartLastRound newGame
+          then return $ setNextPlayer
+            (newGame { state            = LastRound
+                      , lastPlayerToMove = Just (currentPlayer newGame)
+                      }
+            )
+          else return $ setNextPlayer newGame
+  where
+    isGameOver:: Game -> [Card] -> Bool
+    isGameOver game playableCards =
+      let playableCardsXPossibleCards = [((color card, number card),(_color, _number + 1)) | (_color, _number) <- piles game, card <- playableCards]
+      in any (\((c1, n1),(c2, n2)) -> c1 == c2 && n1 == n2) playableCardsXPossibleCards
 
 
 setNextPlayer :: Game -> Game
