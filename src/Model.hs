@@ -193,7 +193,3 @@ instance MongoObject Hint where
 
   insertId id hint = hint { hid = Key (show id) }
 
-
-
--- $> Hint {hid = NewKey, red = Just True, blue = Nothing, green = Nothing, yellow = Just True, white = Nothing, rainbow = Nothing, one = Just True, two = Nothing, three = Just False, four = Just False, five = Nothing}
-

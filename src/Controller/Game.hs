@@ -86,19 +86,19 @@ createGame users settings = do
 
 giveHint :: (Either Color Int) -> String -> Game -> AppHandle (HVect xs) Game
 giveHint hint id game = do
-  let (Just player) = find (\player -> playerId player == id) ((players game))
-  (cardObjects :: [Maybe Card]) <- forM (cards player) findById
-  let cards         = [ card | (Just card) <- cardObjects ]
-  let modifiedCards = map (updateCard hint) cards
-  forM modifiedCards updateObject
-  return game
+    let (Just player) = find (\player -> playerId player == id) ((players game))
+    (cardObjects :: [Maybe Card]) <- forM (cards player) findById
+    let cards         = [ card | (Just card) <- cardObjects ]
+    let modifiedCards = map (updateCard hint) cards
+    forM modifiedCards updateObject
+    return game
+  where
+    updateCard :: (Either Color Int) -> Card -> Card
+    updateCard (Left hcolor) card =
+      if (color card) == hcolor || (color card) == Rainbow
+        then card { hintColor = [hcolor] }
+        else card
+    updateCard (Right hnumber) card = if (number card) == hnumber
+      then card { hintNumber = Just hnumber }
+      else card
 
-
-updateCard :: (Either Color Int) -> Card -> Card
-updateCard (Left hcolor) card =
-  if (color card) == hcolor || (color card) == Rainbow
-    then card { hintColor = [hcolor] }
-    else card
-updateCard (Right hnumber) card = if (number card) == hnumber
-  then card { hintNumber = Just hnumber }
-  else card
