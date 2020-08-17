@@ -93,44 +93,65 @@ makeMove gameId = do
   specificMoveCheck _ (Left error) _            = return (Left error)
   specificMoveCheck _ _            (Left error) = return (Left error)
   specificMoveCheck _uid (Right game) (Right HintAction { targetPlayer = _targetPId, hint = eHint })
+    = (isTargetPlayerAvailable
+        game
+        (HintAction { targetPlayer = _targetPId, hint = eHint })
+      )
+      >>= doesPlayerHintHimself _uid
+      >>= isRainbowHint
+  specificMoveCheck _uid (Right game) (Right PlayAction { cardId = _cardId }) =
+    do
+      mError <- canFindPlayer _uid game >>= cardInPlayersHand "playable" _cardId
+      case mError of
+        Nothing -> return (Right PlayAction { cardId = _cardId })
+        (Just error) -> return (Left error)
+  specificMoveCheck _uid (Right game) (Right DiscardAction { cardId = _cardId })
+    = do
+      mError <- canFindPlayer _uid game >>= cardInPlayersHand "discardable" _cardId
+      case mError of
+        Nothing -> return (Right DiscardAction { cardId = _cardId })
+        (Just error) -> return (Left error)
+  
+  cardInPlayersHand _ _ (Left error) = return (Just error)
+  cardInPlayersHand errorString _cardId (Right _player) = 
+    if find (\card -> _cardId == card) (cards _player) /= Nothing
+            then return Nothing
+            else return (Just ("Card not " ++ errorString ++ "!"))
+
+  canFindPlayer _uid game =
+    let _mPlayer = find (\player -> _uid == (playerId player)) (players game)
+    in  case _mPlayer of
+          Nothing      -> return (Left "You are not part of the game!")
+          Just _player -> return (Right _player)
+
+  isRainbowHint (Left error) = return (Left error)
+  isRainbowHint (Right HintAction { targetPlayer = _targetPId, hint = eHint })
+    = do
+      case eHint of
+        (Right number) ->
+          return (Right HintAction { targetPlayer = _targetPId, hint = eHint })
+        (Left color) -> do
+          if color == Rainbow
+            then return (Left "You cannot give Rainbow hints!")
+            else return
+              (Right HintAction { targetPlayer = _targetPId, hint = eHint })
+
+  doesPlayerHintHimself _ (Left error) = return (Left error)
+  doesPlayerHintHimself _uid (Right HintAction { targetPlayer = _targetPId, hint = eHint })
+    = do
+      if _targetPId == _uid
+        then return (Left "You cannot hint yourself!")
+        else return
+          (Right (HintAction { targetPlayer = _targetPId, hint = eHint }))
+
+  isTargetPlayerAvailable game (HintAction { targetPlayer = _targetPId, hint = eHint })
     = do
       if find (\player -> _targetPId == (playerId player)) (players game)
          /= Nothing
       then
-        if _targetPId == _uid
-          then return (Left "You cannot hint yourself!")
-          else case eHint of
-            (Right number) -> return
-              (Right HintAction { targetPlayer = _targetPId, hint = eHint })
-            (Left color) -> do
-              if color == Rainbow
-                then return (Left "You cannot give Rainbow hints!")
-                else
-                  return
-                    (Right HintAction { targetPlayer = _targetPId
-                                      , hint         = eHint
-                                      }
-                    )
+        return (Right HintAction { targetPlayer = _targetPId, hint = eHint })
       else
         return (Left "Target-Player does not exist!")
-  specificMoveCheck _uid (Right game) (Right PlayAction { cardId = _cardId }) =
-    do
-      let _mPlayer = find (\player -> _uid == (playerId player)) (players game)
-      case _mPlayer of
-        Nothing      -> return (Left "You are not part of the game!")
-        Just _player -> do
-          if find (\card -> _cardId == card) (cards _player) /= Nothing
-            then return (Right PlayAction { cardId = _cardId })
-            else return (Left "Card not playable!")
-  specificMoveCheck _uid (Right game) (Right DiscardAction { cardId = _cardId })
-    = do
-      let _mPlayer = find (\player -> _uid == (playerId player)) (players game)
-      case _mPlayer of
-        Nothing      -> return (Left "You are not part of the game!")
-        Just _player -> do
-          if find (\card -> _cardId == card) (cards _player) /= Nothing
-            then return (Right DiscardAction { cardId = _cardId })
-            else return (Left "Card not discardable!")
 
   updateGameStatus
     :: Either String Game
@@ -150,8 +171,8 @@ makeMove gameId = do
       :: Game -> MoveAction -> AppHandle (HVect xs) (Either String Game)
     _updateGameStatus game (HintAction { targetPlayer = _targetP, hint = _hint })
       = giveHint _hint _targetP game
-    _updateGameStatus game (PlayAction { cardId = _cid }   ) = undefined--playCard (currentPlayer game) _cid game
-    _updateGameStatus game (DiscardAction { cardId = _cid }) = undefined--discardCard (currentPlayer game) _cid game
+    _updateGameStatus game (PlayAction { cardId = _cid }   ) = playCard (currentPlayer game) _cid game
+    _updateGameStatus game (DiscardAction { cardId = _cid }) = discardCard (currentPlayer game) _cid game
 
 
 

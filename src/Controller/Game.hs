@@ -119,7 +119,7 @@ giveHint hint id game = do
     else card
 
 
-playCard :: String -> String -> Game -> AppHandle (HVect xs) Game
+playCard :: String -> String -> Game -> AppHandle (HVect xs) (Either String Game)
 playCard _pid _cid game = do
   ((mCardToPlay) :: Maybe Card) <- findById _cid
   let (Just cardToPlay) = mCardToPlay
@@ -130,12 +130,12 @@ playCard _pid _cid game = do
     then do
       adjGame <- playedValidCard game cardToPlay
       if didWin adjGame
-        then return adjGame { state = Won }
+        then return (Right (adjGame { state = Won }))
         else continueGame adjGame newPlayer
     else do
       adjGame <- playedInvalidCard game _cid
       if didLoose adjGame
-        then return adjGame { state = Lost }
+        then return (Right (adjGame { state = Lost }))
         else continueGame adjGame newPlayer
  where
   playedInvalidCard :: Game -> String -> AppHandle (HVect xs) Game
@@ -160,18 +160,18 @@ playCard _pid _cid game = do
   didLoose :: Game -> Bool
   didLoose game = (lives game) == 0
 
-  continueGame :: Game -> Player -> AppHandle (HVect xs) Game
+  continueGame :: Game -> Player -> AppHandle (HVect xs) (Either String Game)
   continueGame game _player = do
     let (newPlayer, adjGame) = drawNewCard game _player
     let _adjGame =
           adjGame { players = updatePlayer (players adjGame) newPlayer }
     if shouldStartLastRound _adjGame
-      then return $ setNextPlayer
+      then return (Right (setNextPlayer
         (_adjGame { state            = LastRound
                   , lastPlayerToMove = Just (currentPlayer _adjGame)
                   }
-        )
-      else return $ setNextPlayer _adjGame
+        )))
+      else return (Right (setNextPlayer _adjGame))
 
 discardCard
   :: String -> String -> Game -> AppHandle (HVect xs) (Either String Game)
@@ -219,7 +219,7 @@ discardCard _pid _cid game = do
             | (_color, _number) <- piles game
             , card              <- playableCards
             ]
-    in  any (\((c1, n1), (c2, n2)) -> c1 == c2 && n1 == n2)
+    in  not $ any (\((c1, n1), (c2, n2)) -> c1 == c2 && n1 == n2)
             playableCardsXPossibleCards
 
 
