@@ -349,7 +349,10 @@ getStatus lobbyId = do
 -}
 launchGame :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 launchGame lobbyId = do
-  elobby <- findLobbyById lobbyId >>= areEnoughPlayer >>= updateLobby
+  oldCtx <- getContext
+  let host :: User = (findFirst oldCtx)
+  let (Key hostId) = uid host
+  elobby <- findLobbyById lobbyId >>= isHost hostId >>= areEnoughPlayer >>= updateLobby
   case elobby of
     (Left error) -> do
       setStatus badRequest400
@@ -382,4 +385,8 @@ launchGame lobbyId = do
     updateObject newLobby
     return (Right newLobby)
 
-
+  isHost _      (Left  error) = return (Left error) -- TODO REFACTOR THIS
+  isHost hostId (Right lobby) = do
+    if not $ hostId == (lobbyHost lobby)
+      then return (Left "You are not the Host of this lobby")
+      else return (Right lobby)

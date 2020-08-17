@@ -3,7 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
-
+-- TODO (DuplicateRecordFields)
 module Model where
 
 import           Data.Aeson                     ( ToJSON(..)
@@ -123,7 +123,8 @@ data Game = Game {gid:: ObjectKey,
                   state:: State,
                   points:: Int,
                   maxPoints:: Int,
-                  lastPlayerToMove:: Maybe String
+                  lastPlayerToMove:: Maybe String,
+                  settings:: Settings
                   }
                   deriving(Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
 
@@ -157,4 +158,9 @@ instance MongoObject Hint where
   collection _ = "hints"
 
   insertId id hint = hint { hid = Key (show id) }
+
+data MoveAction = HintAction {targetPlayer::String, hint::Either Color Int}
+                  | PlayAction {cardId::String}
+                  | DiscardAction { cardId:: String}
+                  deriving (FromJSON, ToJSON, Show, Generic, Eq)
 

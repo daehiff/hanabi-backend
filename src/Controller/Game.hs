@@ -85,11 +85,11 @@ createGame users settings = do
                   ]
         , state            = Running
         , points           = 0
-        , maxPoints = 5 * (length $ getColorsForGame (isRainbow settings))
+        , maxPoints = 5 * (length $ getColorsForGame (isRainbow settings)) -- 5 because it's the highest number per pile you can get
         , lastPlayerToMove = Nothing
+        , settings         = settings
         }
   insertObject game
-
 
 giveHint
   :: (Either Color Int)
@@ -173,36 +173,44 @@ playCard _pid _cid game = do
         )
       else return $ setNextPlayer _adjGame
 
-discardCard :: String -> String -> Game -> AppHandle (HVect xs) Game
+discardCard
+  :: String -> String -> Game -> AppHandle (HVect xs) (Either String Game)
 discardCard _pid _cid game = do
-  ((mCardToPlay) :: Maybe Card) <- findById _cid
-  let (Just cardToPlay) = mCardToPlay
-  
-  let (Just player) =
-        find (\_player -> _pid == (playerId _player)) (players game)
-
-  let newPlayer       = removeCardFromPlayer player _cid
-  let discardedGame   = game { discardPile = _cid : (discardPile game) }
-
-  let handCards = concat [ cards player | player <- players discardedGame ]
-  let playableCardIDs = (drawPile discardedGame) ++ handCards
-  (mPlayableCards :: [Maybe Card]) <- forM playableCardIDs findById
-  let playableCards = [ card | (Just card) <- mPlayableCards ]
-  
-  if isGameOver discardedGame playableCards
-    then return discardedGame { state = Won }
+  if (hints game) == amtHints (settings game)
+    then return (Left "Cannot discard, because max amount of hints is reached!")
     else do
-      let (_player, _game) = drawNewCard discardedGame newPlayer
-      let newGame = _game { hints   = hints _game + 1
-                          , players = updatePlayer (players _game) _player
-                          }
-      if shouldStartLastRound newGame
-        then return $ setNextPlayer
-          (newGame { state            = LastRound
-                   , lastPlayerToMove = Just (currentPlayer newGame)
-                   }
-          )
-        else return $ setNextPlayer newGame
+      ((mCardToPlay) :: Maybe Card) <- findById _cid
+      let (Just cardToPlay) = mCardToPlay
+
+      let (Just player) =
+            find (\_player -> _pid == (playerId _player)) (players game)
+
+      let newPlayer       = removeCardFromPlayer player _cid
+      let discardedGame   = game { discardPile = _cid : (discardPile game) }
+
+      let handCards = concat [ cards player | player <- players discardedGame ]
+      let playableCardIDs = (drawPile discardedGame) ++ handCards
+      (mPlayableCards :: [Maybe Card]) <- forM playableCardIDs findById
+      let playableCards = [ card | (Just card) <- mPlayableCards ]
+
+      if isGameOver discardedGame playableCards
+        then return (Right (discardedGame { state = Won }))
+        else do
+          let (_player, _game) = drawNewCard discardedGame newPlayer
+          let newGame = _game { hints   = hints _game + 1
+                              , players = updatePlayer (players _game) _player
+                              }
+          if shouldStartLastRound newGame
+            then return
+              (Right
+                (setNextPlayer
+                  (newGame { state            = LastRound
+                           , lastPlayerToMove = Just (currentPlayer newGame)
+                           }
+                  )
+                )
+              )
+            else return (Right (setNextPlayer newGame))
  where
   isGameOver :: Game -> [Card] -> Bool
   isGameOver game playableCards =
@@ -248,8 +256,8 @@ drawNewCard game player =
   )
 
 shouldStartLastRound :: Game -> Bool
-shouldStartLastRound game = length (drawPile game) == 0
-
+shouldStartLastRound game =
+  length (drawPile game) == 0 && (state game) == Running
 
 updatePlayer :: [Player] -> Player -> [Player]
 updatePlayer players _player = map
@@ -258,3 +266,15 @@ updatePlayer players _player = map
     else _playerObj
   )
   (players)
+
+updateStatusLastRound :: Game -> Game
+updateStatusLastRound game =
+  if (state game)
+       == LastRound
+       && Just (currentPlayer game)
+       == (lastPlayerToMove game)
+    then game { state = Won }
+    else game
+
+isPlayerAllowedToPlay :: String -> Game -> Bool
+isPlayerAllowedToPlay _pid _game = _pid == (currentPlayer _game)
