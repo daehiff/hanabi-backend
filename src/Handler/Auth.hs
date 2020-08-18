@@ -43,15 +43,15 @@ import           Control.Monad.Trans.Reader     ( ReaderT )
 import           Database.MongoDB               ( Pipe )
 import           Controller.Utils               ( parseBody )
 import qualified Data.ByteString.Char8         as BS8
+import           Data.HVect                     ( HVect )
+
+
 
 {-
 Creates a new session for the user and adds it to the database.
 Returns the user that is loged in and the corresponding jwt
 -}
-logUserIn
-  :: (MonadTrans t, MonadIO (t (AppStateM sess)))
-  => User
-  -> t (AppStateM sess) (User, T.Text)
+logUserIn :: User -> AppHandle (HVect xs) (User, T.Text)
 logUserIn user = do
   let (Key userId) = uid user
   session <- (insertObject Session { sid = NewKey, sessionUser = (userId) })
@@ -79,7 +79,7 @@ logUserIn user = do
 }
 
 -}
-loginHandle :: ActionCtxT ctx (AppStateM sess) b
+loginHandle :: AppHandle (HVect xs) ()
 loginHandle = do
   rawBodyStr <- fromStrict <$> body
   let eEmailPw = parseBody
@@ -99,19 +99,19 @@ loginHandle = do
       setHeader "auth" jwt
       json (sucessJson sucessCode logedInUser)
  where
-{-   validateEmail:: Either String (String, String) -> ActionCtxT ctx (AppStateM sess) (Either String (String, String))
-  validateEmail (Left error) = return (Left error)
-  validateEmail (Right (email, password)) = do -}
+{-   checkUserEmailExist:: Either String (String, String) -> ActionCtxT ctx (AppStateM sess) (Either String (String, String))
+  checkUserEmailExist (Left error) = return (Left error)
+  checkUserEmailExist (Right (email, password)) = do -}
 
 
   checkUser
     :: Either String (String, String)
-    -> ActionCtxT ctx (AppStateM sess) (Either String User)
+    -> AppHandle (HVect xs) (Either String User)
   checkUser (Left  error            ) = return (Left error)
   checkUser (Right (email, password)) = do
     (eUser :: Maybe User) <- findObject ["email" =: val email]
     case eUser of
-      Nothing     -> return (Left "User not avaiable")
+      Nothing     -> return (Left "User with this email does not exist.")
       (Just user) -> return (validateUser password user)
 
    where
@@ -120,7 +120,7 @@ loginHandle = do
       let pwHash = fromMaybe "" (password_hash user)
       in  if validatePassword (pack (pwHash)) (pack (upw ++ pwsalt user))
             then (Right user)
-            else (Left "invalid password")
+            else (Left "invalid Password.")
 
 {-
 @api {post} {{base_url}}/auth/login Register user 
@@ -134,7 +134,7 @@ loginHandle = do
     "username": "sampleusername"
 }
 -}
-registerHandle :: ActionCtxT ctx (AppStateM sess) b
+registerHandle :: AppHandle (HVect xs) ()
 registerHandle = do
   rawBodyStr <- fromStrict <$> body
   let eReqData = parseBody
@@ -145,10 +145,12 @@ registerHandle = do
           username <- (obj .: "username") :: Parser String
           return (email, username, password)
         )
-  userCreated    <- liftIO (createuser eReqData)
-  emailValidated <- validateEmail userCreated
-  userValid      <- validateUsername emailValidated
-  euser          <- storeUser userValid
+  userCreated <- liftIO (createuser eReqData)
+  userValid   <-
+    checkUserEmailExist userCreated
+    >>= checkUserUsernameExists
+    >>= checkEmptyMailUsername
+  euser <- storeUser userValid
   case euser of
     (Left error) -> do
       setStatus badRequest400
@@ -162,47 +164,55 @@ registerHandle = do
     :: Either String (String, String, String) -> IO (Either String User)
   createuser (Left  error                      ) = return (Left error)
   createuser (Right (email, username, password)) = do
-    mSalt <- liftIO $ genSaltUsingPolicy fastBcryptHashingPolicy
-    if mSalt == Nothing
-      then return (Left "internal Server error")
+    if password == ""
+      then return (Left "Password may not be empty")
       else do
-        let (Just salt) = mSalt
-        let pwSalt      = password ++ (BS8.unpack salt)
-        passwordHash <- liftIO
-          ((hashPasswordUsingPolicy fastBcryptHashingPolicy (pack pwSalt)))
-        let newUser = User { uid           = NewKey
-                           , email         = email
-                           , password_hash = (fmap unpackStrict8 passwordHash)
-                           , username      = username
-                           , sessions      = []
-                           , pwsalt        = BS8.unpack salt
-                           }
-        return (Right newUser)
+        mSalt <- liftIO $ genSaltUsingPolicy fastBcryptHashingPolicy
+        if mSalt == Nothing
+          then return (Left "internal Server error")
+          else do
+            let (Just salt) = mSalt
+            let pwSalt      = password ++ (BS8.unpack salt)
+            passwordHash <- liftIO
+              ((hashPasswordUsingPolicy fastBcryptHashingPolicy (pack pwSalt)))
+            let newUser = User
+                  { uid           = NewKey
+                  , email         = email
+                  , password_hash = (fmap unpackStrict8 passwordHash)
+                  , username      = username
+                  , sessions      = []
+                  , pwsalt        = BS8.unpack salt
+                  }
+            return (Right newUser)
 
-  validateEmail
-    :: Either String User
-    -> ActionCtxT ctx (AppStateM sess) (Either String User)
-  validateEmail (Left  error) = return (Left error)
-  validateEmail (Right user ) = do
+  checkEmptyMailUsername
+    :: Either String User -> AppHandle (HVect xs) (Either String User)
+  checkEmptyMailUsername (Left  error) = return (Left error)
+  checkEmptyMailUsername (Right user ) = do
+    if (email user) == "" || (username user) == ""
+      then return (Left "Email or username empty!")
+      else return (Right user)
+
+  checkUserEmailExist
+    :: Either String User -> AppHandle (HVect xs) (Either String User)
+  checkUserEmailExist (Left  error) = return (Left error)
+  checkUserEmailExist (Right user ) = do
     (existingUser :: Maybe User) <- (findObject ["email" =: val (email user)])
     case existingUser of
       (Just user) -> return (Left "user with this email already exists.")
       (Nothing  ) -> return (Right user)
 
-  validateUsername
-    :: Either String User
-    -> ActionCtxT ctx (AppStateM sess) (Either String User)
-  validateUsername (Left  error) = return (Left error)
-  validateUsername (Right user ) = do
+  checkUserUsernameExists
+    :: Either String User -> AppHandle (HVect xs) (Either String User)
+  checkUserUsernameExists (Left  error) = return (Left error)
+  checkUserUsernameExists (Right user ) = do
     (existingUser :: Maybe User) <-
       (findObject ["username" =: val (username user)])
     case existingUser of
       (Just user) -> return (Left "Username is already taken.")
       (Nothing  ) -> return (Right user)
 
-  storeUser
-    :: Either String User
-    -> ActionCtxT ctx (AppStateM sess) (Either String User)
+  storeUser :: Either String User -> AppHandle (HVect xs) (Either String User)
   storeUser (Left  error) = return (Left error)
   storeUser (Right user ) = do
     insertedUser <- insertObject user

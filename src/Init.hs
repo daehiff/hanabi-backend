@@ -47,6 +47,7 @@ import           System.Environment             ( getEnv
                                                 , lookupEnv
                                                 )
 import           Responses
+import           Network.HTTP.Types             ( status204 )
 
 -----
 import           Model.BSONExtention            ( ObjectKey(..) )
@@ -78,8 +79,20 @@ runApp = do
   runSpock (port config) (spock spockCfg app)
 
 
+corsHeader :: AppHandle () ()
+corsHeader =
+  do ctx <- getContext
+     setHeader "Access-Control-Allow-Origin" "*"
+     setHeader "Access-Control-Allow-Methods" "POST, GET, OPTIONS, DELETE"
+     setHeader "Access-Control-Allow-Headers" "Content-Type, auth"
+     setHeader "Access-Control-Max-Age" "86400"
+     setStatus status204
+     pure ctx
+
+
 app :: App ()
 app = do
+  hookAny OPTIONS (\path -> corsHeader)
   prehook initHook $ do
     middleware (staticPolicy (addBase "./static/doc"))
     get root $ do
