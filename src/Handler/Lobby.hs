@@ -467,6 +467,9 @@ checkIfGameAlreadyStarted (Right lobby) =
     then return (Left "Game already started!")
     else return (Right lobby)
 
-
-getUser :: (ListContains n User xs) => AppHandle (HVect xs) ()
-getUser = undefined
+getUserHandle :: (ListContains n User xs) => String ->AppHandle (HVect xs) ()
+getUserHandle _uid = do
+  (eUser :: Maybe User) <- findById _uid
+  case eUser of
+    Nothing -> json $ errorJson userNotFoundError ("User not found!"::String)
+    (Just user) -> json $ sucessJson sucessCode user

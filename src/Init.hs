@@ -117,7 +117,7 @@ app = do
       post ("game" <//> var <//> "move") $ makeMove
       get("game"<//> var <//> "cards") $ getCards
       -- User Route
-      --get ("user" <//> var) $ getUser
+      get ("user" <//> var) $ getUserHandle
 
 
 

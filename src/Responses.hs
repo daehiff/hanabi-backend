@@ -74,3 +74,6 @@ errorAdjustSettings = 9
 
 errorRemoveLobby :: Int
 errorRemoveLobby = 10
+
+userNotFoundError :: Int
+userNotFoundError = 11
