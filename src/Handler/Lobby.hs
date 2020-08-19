@@ -149,7 +149,7 @@ findLobbys = do
 @apiHeader {String} auth Users auth Token.
 @apiDescription join a lobby by a given salt
 -}
-joinLobby :: (ListContains n User xs) => String -> AppHandle (HVect xs) () -- TODO proper Type Annotations
+joinLobby :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 joinLobby salt = do
   oldCtx <- getContext
   let user :: User = (findFirst oldCtx)
@@ -466,3 +466,7 @@ checkIfGameAlreadyStarted (Right lobby) =
   if (launched lobby)
     then return (Left "Game already started!")
     else return (Right lobby)
+
+
+getUser :: (ListContains n User xs) => AppHandle (HVect xs) ()
+getUser = undefined

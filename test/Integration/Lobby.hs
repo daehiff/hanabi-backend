@@ -83,7 +83,7 @@ setupUser user = do
   let (Right respUser) = parseBody
         (simpleBody request)
         (\obj -> do
-          sucess <- (obj .: "sucess") :: Parser Object
+          sucess <- (obj .: "success") :: Parser Object
           user   <- (sucess .: "message") :: Parser User
           return user
         )
@@ -96,13 +96,17 @@ loginUser user = do
   return (user, jwt)
 
 createLobbyJSON :: Bool -> ByteString
-createLobbyJSON public = encode $ (object ["public" .= public])
+createLobbyJSON public = encode $ (object ["public" .= public, "settings" .= Settings { amtLives  = 3
+                            , amtHints  = 8
+                            , level     = Hard
+                            , isRainbow = True
+                            }])
 
 getLobbyFromResponse :: ByteString -> Either String Lobby
 getLobbyFromResponse bodyStr = parseBody
   bodyStr
   (\obj -> do
-    sucess <- (obj .: "sucess") :: Parser Object
+    sucess <- (obj .: "success") :: Parser Object
     lobby  <- (sucess .: "message") :: Parser Lobby
     return lobby
   )
@@ -136,7 +140,7 @@ lobbyTest = before_ flushDB $ do
         (customPost "/lobby/create" [("auth", jwt)] (createLobbyJSON True))
       let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
       (customGet "/lobby/find" [("auth", jwt)] "")
-        `shouldRespondWith` sucessResponse 200 sucessCode ([lobby] :: [Lobby])
+        `shouldRespondWith` sucessResponse 200 sucessCode ([] :: [Lobby])
     it "hides private lobbys" $ do
       let admin = defaultUsers !! 0
       (admin, jwt) <- setupUser admin
