@@ -74,7 +74,7 @@ authTest = (before_ beforeEach) $ do
         `shouldRespondWith` errorResponse
                               400
                               loginError
-                              ("invalid password" :: String)
+                              ("invalid password." :: String)
       post "/auth/login" (userLoginJSON testUser { email = "wrong@mail.com" })
         `shouldRespondWith` errorResponse
                               400

@@ -13,6 +13,7 @@ import           Data.Text               hiding ( unfoldr
                                                 , lines
                                                 , length
                                                 , map
+                                                , filter
                                                 )
 import qualified Data.Text                     as T
 import           Data.List                      ( unfoldr )
@@ -130,9 +131,12 @@ findLobbys = do
 
   now <- liftIO getCurretISOTime
   let past = addUTCTime (-60 * 60 :: NominalDiffTime) (now)
-  lobbys <- findAvailableLobbys Nothing True
+  lobbys <- (findAvailableLobbys Nothing True) >>= filterAvailableLobbys _id
+  
   json $ (sucessJson sucessCode lobbys)
-
+  where
+    filterAvailableLobbys:: String -> [Lobby] -> AppHandle (HVect xs) ([Lobby])
+    filterAvailableLobbys _uid lobbys = return $ filter (\lobby -> _uid /= lobbyHost lobby) lobbys
 {-
 @api {post} {{base_url}}/lobby/join/:salt join Lobby
 @apiName join 
