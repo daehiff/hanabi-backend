@@ -148,20 +148,19 @@ findLobbys = do
 @apiParam {String} salt Unique salt of the lobby
 @apiHeader {String} auth Users auth Token.
 @apiDescription join a lobby by a given salt
-
 -}
-joinLobby :: (ListContains n User xs) => String -> AppHandle (HVect xs) () -- TODO propoer Type Annotations
+joinLobby :: (ListContains n User xs) => String -> AppHandle (HVect xs) () -- TODO proper Type Annotations
 joinLobby salt = do
   oldCtx <- getContext
   let user :: User = (findFirst oldCtx)
   elobby <-
     findLobbyBySalt salt
-    >>= checkStarted
+    >>= checkIfGameAlreadyStarted
     >>= checkJoined user
     >>= checkKickedPlayer user
     >>= checkHost user
     >>= userJoinLobby user
-    >>= checkIfGameAlreadyStarted
+    
   case (elobby) of
     (Left error) -> do
       setStatus badRequest400
@@ -178,13 +177,6 @@ joinLobby salt = do
     case mLobby of
       Nothing      -> return (Left ("Could not find Lobby with salt: " ++ salt))
       (Just lobby) -> return (Right lobby)
-
-  checkStarted
-    :: Either String Lobby -> AppHandle (HVect xs) (Either String Lobby)
-  checkStarted (Left  error) = return (Left error)
-  checkStarted (Right lobby) = if (launched lobby)
-    then return (Left "Game has already started.")
-    else return (Right lobby)
 
   checkJoined
     :: User -> Either String Lobby -> AppHandle (HVect xs) (Either String Lobby)
@@ -220,6 +212,8 @@ joinLobby salt = do
     let newLobby = lobby { player = (_id : (player lobby)) }
     updateObject newLobby
     return (Right newLobby)
+  
+
 
 {-
 @api {post} {{base_url}}/lobby/:lobbyId/leave leave Lobby
@@ -324,6 +318,34 @@ kickPlayer lobbyId playerId = do
 
     updateObject newLobby
     return (Right newLobby)
+
+removeLobby :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
+removeLobby lobbyId = do
+  oldCtx <- getContext
+
+  let user :: User = (findFirst oldCtx)
+  let (Key userId) = uid user
+  elobby <-
+    findLobbyById lobbyId
+    >>= isHost user
+  case elobby of
+    (Left error) -> do
+      setStatus badRequest400
+      json $ errorJson errorRemoveLobby error
+    (Right lobby) -> do
+      let (Key _id) = (lid lobby)
+      (removedLobby::Maybe Lobby) <- removeObjectById _id
+      case removedLobby of
+        Nothing -> json $ errorJson errorRemoveLobby ("Lobby doesn't exist, so no removing!"::String)
+        (Just _lobby) -> json $ sucessJson sucessCode _lobby
+ where
+  isHost _ (Left error) = return (Left error)
+  isHost user (Right lobby) =
+    let (Key _id) = uid user
+    in  if _id /= lobbyHost lobby
+          then (return (Left "You are not the host, so you cannot remove the lobby!"))
+          else (return (Right lobby))
+
 
 adjustSettings :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 adjustSettings lobbyId = do
@@ -439,10 +461,8 @@ launchGame lobbyId = do
 
 checkIfGameAlreadyStarted
   :: (Either String Lobby) -> AppHandle (HVect xs) (Either String Lobby)
-checkIfGameAlreadyStarted eLobby = do
-  case eLobby of
-    (Left  error) -> return (Left error)
-    (Right lobby) -> do
-      if (launched lobby)
-        then return (Left "Game already started!")
-        else return (Right lobby)
+checkIfGameAlreadyStarted (Left  error) = return (Left error)
+checkIfGameAlreadyStarted (Right lobby) = 
+  if (launched lobby)
+    then return (Left "Game already started!")
+    else return (Right lobby)

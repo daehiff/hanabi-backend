@@ -111,6 +111,7 @@ app = do
       get ("/lobby" <//> var <//> "status") $ getStatus
       post ("/lobby" <//> var <//> "launch") $ launchGame
       post ("/lobby" <//> var <//> "settings") $ adjustSettings
+      post ("/lobby" <//> var <//> "remove") $ removeLobby
       -- Game Routes
       get ("game" <//> var <//> "status") $ getGameStatus
       post ("game" <//> var <//> "move") $ makeMove

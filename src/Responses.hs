@@ -71,3 +71,6 @@ errorLaunch = 8
 
 errorAdjustSettings :: Int
 errorAdjustSettings = 9
+
+errorRemoveLobby :: Int
+errorRemoveLobby = 10
