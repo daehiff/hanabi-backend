@@ -88,7 +88,7 @@ createLobby = do
   let epublic = parseBody
         rawBodyStr
         (\obj -> do
-          isPublic <- (obj .: "public") :: Parser Bool
+          isPublic  <- (obj .: "public") :: Parser Bool
           lSettings <- (obj .: "settings") :: Parser Settings
           return (isPublic, lSettings)
         )
@@ -135,11 +135,12 @@ findLobbys = do
   now <- liftIO getCurretISOTime
   let past = addUTCTime (-60 * 60 :: NominalDiffTime) (now)
   lobbys <- (findAvailableLobbys Nothing True) >>= filterAvailableLobbys _id
-  
+
   json $ (sucessJson sucessCode lobbys)
-  where
-    filterAvailableLobbys:: String -> [Lobby] -> AppHandle (HVect xs) ([Lobby])
-    filterAvailableLobbys _uid lobbys = return $ filter (\lobby -> _uid /= lobbyHost lobby) lobbys
+ where
+  filterAvailableLobbys :: String -> [Lobby] -> AppHandle (HVect xs) ([Lobby])
+  filterAvailableLobbys _uid lobbys =
+    return $ filter (\lobby -> _uid /= lobbyHost lobby) lobbys
 {-
 @api {post} {{base_url}}/lobby/join/:salt join Lobby
 @apiName join 
@@ -160,6 +161,7 @@ joinLobby salt = do
     >>= checkKickedPlayer user
     >>= checkHost user
     >>= userJoinLobby user
+    >>= checkIfGameAlreadyStarted
   case (elobby) of
     (Left error) -> do
       setStatus badRequest400
@@ -236,6 +238,7 @@ leaveLobby lobbyId = do
     >>= isHost user
     >>= checkPlayerIsInLobby user
     >>= updateLobby user
+    >>= checkIfGameAlreadyStarted
   case elobby of
     (Left error) -> do
       setStatus badRequest400
@@ -284,6 +287,7 @@ kickPlayer lobbyId playerId = do
     >>= checkHost playerId
     >>= checkPlayer playerId
     >>= updateLobby playerId
+    >>= checkIfGameAlreadyStarted
   case elobby of
     (Left error) -> do
       setStatus badRequest400
@@ -323,7 +327,7 @@ kickPlayer lobbyId playerId = do
 
 adjustSettings :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 adjustSettings lobbyId = do
-  oldCtx     <- getContext
+  oldCtx <- getContext
   let user :: User = (findFirst oldCtx)
   let (Key userId) = uid user
   rawBodyStr <- fromStrict <$> body
@@ -342,9 +346,11 @@ adjustSettings lobbyId = do
         (Left  error) -> json $ errorJson lobbyNotFoundError error
         (Right lobby) -> do
           if (lobbyHost lobby) /= userId
-            then json $ errorJson authError ("You are not authenticated to change settings!"::String)
+            then json $ errorJson
+              authError
+              ("You are not authenticated to change settings!" :: String)
             else do
-              let newLobby = lobby {gameSettings = lSettings}
+              let newLobby = lobby { gameSettings = lSettings }
               json $ sucessJson sucessCode newLobby
 
 {-
@@ -384,7 +390,12 @@ launchGame lobbyId = do
   oldCtx <- getContext
   let host :: User = (findFirst oldCtx)
   let (Key hostId) = uid host
-  elobby <- findLobbyById lobbyId >>= isHost hostId >>= areEnoughPlayer >>= updateLobby
+  elobby <-
+    findLobbyById lobbyId
+    >>= isHost hostId
+    >>= areEnoughPlayer
+    >>= updateLobby
+    >>= checkIfGameAlreadyStarted
   case elobby of
     (Left error) -> do
       setStatus badRequest400
@@ -410,8 +421,10 @@ launchGame lobbyId = do
                             , level     = Hard
                             , isRainbow = True
                             }
-    (userObjects :: [Maybe User]) <- forM ((lobbyHost lobby) : (player lobby)) findById
-    game <- createGame [user | (Just user) <- userObjects] settings
+    (userObjects :: [Maybe User]) <- forM
+      ((lobbyHost lobby) : (player lobby))
+      findById
+    game <- createGame [ user | (Just user) <- userObjects ] settings
     let (Key _gid) = gid game
     let newLobby = lobby { launched = True, gameId = Just _gid }
     updateObject newLobby
@@ -424,10 +437,11 @@ launchGame lobbyId = do
       else return (Right lobby)
 
 
-checkIfGameAlreadyStarted:: (Either String Lobby) -> AppHandle (HVect xs) (Either String Lobby)
+checkIfGameAlreadyStarted
+  :: (Either String Lobby) -> AppHandle (HVect xs) (Either String Lobby)
 checkIfGameAlreadyStarted eLobby = do
   case eLobby of
-    (Left error) -> return (Left error)
+    (Left  error) -> return (Left error)
     (Right lobby) -> do
       if (launched lobby)
         then return (Left "Game already started!")
