@@ -68,3 +68,6 @@ errorKickPlayer = 7
 
 errorLaunch :: Int
 errorLaunch = 8
+
+errorAdjustSettings :: Int
+errorAdjustSettings = 9

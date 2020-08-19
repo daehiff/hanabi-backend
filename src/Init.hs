@@ -110,6 +110,7 @@ app = do
       post ("/lobby" <//> var <//> "kick" <//> var) $ kickPlayer
       get ("/lobby" <//> var <//> "status") $ getStatus
       post ("/lobby" <//> var <//> "launch") $ launchGame
+      post ("/lobby" <//> var <//> "settings") $ adjustSettings
       -- Game Routes
       get ("game" <//> var <//> "status") $ getGameStatus
       post ("game" <//> var <//> "move") $ makeMove

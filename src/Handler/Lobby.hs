@@ -77,7 +77,8 @@ findAvailableLobbys (Just salt) public = do
   @apiDescription create a new Lobby
   @apiErrorExample {json} Sample Input
 {
-  "public": false
+  "public": false,
+  "settings": {...}
 }
 -}
 createLobby :: (ListContains n User xs) => AppHandle (HVect xs) ()
@@ -88,13 +89,14 @@ createLobby = do
         rawBodyStr
         (\obj -> do
           isPublic <- (obj .: "public") :: Parser Bool
-          return isPublic
+          lSettings <- (obj .: "settings") :: Parser Settings
+          return (isPublic, lSettings)
         )
   case epublic of
     (Left error) -> do
       setStatus badRequest400
       json $ errorJson errorCreateLobby error
-    (Right public) -> do
+    (Right (public, lSettings)) -> do
       lobbys <- findAvailableLobbys Nothing True
       let salts        = [ salt lobby | lobby <- lobbys ]
 
@@ -112,6 +114,7 @@ createLobby = do
                          , salt         = salt
                          , public       = public
                          , launched     = launched
+                         , gameSettings = lSettings
                          }
       lobby <- insertObject lobbyC
       json $ sucessJson sucessCode lobby
@@ -318,6 +321,31 @@ kickPlayer lobbyId playerId = do
     updateObject newLobby
     return (Right newLobby)
 
+adjustSettings :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
+adjustSettings lobbyId = do
+  oldCtx     <- getContext
+  let user :: User = (findFirst oldCtx)
+  let (Key userId) = uid user
+  rawBodyStr <- fromStrict <$> body
+  let eSettings = parseBody
+        rawBodyStr
+        (\obj -> do
+          lSettings <- (obj .: "settings") :: Parser Settings
+          return lSettings
+        )
+  case eSettings of
+    (Left error) -> do
+      json $ errorJson errorAdjustSettings error
+    (Right lSettings) -> do
+      eLobby <- findLobbyById lobbyId >>= checkIfGameAlreadyStarted
+      case eLobby of
+        (Left  error) -> json $ errorJson lobbyNotFoundError error
+        (Right lobby) -> do
+          if (lobbyHost lobby) /= userId
+            then json $ errorJson authError ("You are not authenticated to change settings!"::String)
+            else do
+              let newLobby = lobby {gameSettings = lSettings}
+              json $ sucessJson sucessCode newLobby
 
 {-
 @api {get} {{base_url}}/lobby/:lobbyId/status Lobby status
@@ -394,3 +422,13 @@ launchGame lobbyId = do
     if not $ hostId == (lobbyHost lobby)
       then return (Left "You are not the Host of this lobby")
       else return (Right lobby)
+
+
+checkIfGameAlreadyStarted:: (Either String Lobby) -> AppHandle (HVect xs) (Either String Lobby)
+checkIfGameAlreadyStarted eLobby = do
+  case eLobby of
+    (Left error) -> return (Left error)
+    (Right lobby) -> do
+      if (launched lobby)
+        then return (Left "Game already started!")
+        else return (Right lobby)

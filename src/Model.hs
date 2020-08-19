@@ -91,9 +91,10 @@ data Lobby = Lobby {lid:: ObjectKey,
                     gameId::Maybe String,
                     salt::String,
                     public::Bool,
-                    launched::Bool}
+                    launched::Bool,
+                    gameSettings :: Settings}
                     deriving (Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
-
+                    
 instance MongoObject Lobby where
   collection _ = "lobbys"
 
