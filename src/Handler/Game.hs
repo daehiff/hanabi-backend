@@ -50,8 +50,6 @@ filterOwnUser (Right game ) = do
   return (Right newGame)
 
 
-
-
 makeMove :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 makeMove gameId = do
   rawBodyStr <- fromStrict <$> body
@@ -178,7 +176,22 @@ makeMove gameId = do
     _updateGameStatus game (DiscardAction { cardId = _cid }) =
       discardCard (currentPlayer game) _cid game
 
-
+getCards:: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
+getCards gameId = do
+  eGame      <- getGameFromDB gameId
+  _eGame <- filterOwnUser eGame
+  case _eGame of
+    (Left  error) -> json $ errorJson 12 (error :: String)
+    (Right game ) -> do
+      let handCards = [ ((playerId player), (cards player)) | player <- players game ]
+      let tupleDiscardPile = ("discardPile", (discardPile game))
+      let cardIdsToFind = tupleDiscardPile : handCards
+      cardsToDisplay <- forM cardIdsToFind (\(string, list)-> do 
+        (mCards :: [Maybe Card]) <- forM list findById
+        let cards = [card | (Just card) <- mCards]
+        return (string, cards)
+        )
+      json $ sucessJson sucessCode cardsToDisplay
 
 getGameFromDB :: String -> AppHandle (HVect xs) (Either String Game)
 getGameFromDB gameId = do

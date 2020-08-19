@@ -113,6 +113,7 @@ app = do
       -- Game Routes
       get ("game" <//> var <//> "status") $ getGameStatus
       post ("game" <//> var <//> "move") $ makeMove
+      get("game"<//> var <//> "cards") $ getCards
 
 
 
