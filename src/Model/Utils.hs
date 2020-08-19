@@ -193,6 +193,15 @@ class (ToBSON a, FromBSON a) => MongoObject a where {-MUST DEFINE: insertId, col
       let docs = (map deserialize docs_raw):: [Maybe a]
       return docs
 
+  
 
+  removeObjectById::(MonadTrans t, MonadIO (t (AppStateM sess))) => String -> t (AppStateM sess) (Maybe a)
+  removeObjectById _id = let mobjId = readMaybe _id :: Maybe ObjectId in 
+    do
+      el <- findById _id
+      runDB $ delete $ select [T.pack "_id" := val mobjId] (collection (undefined::a))
+      return el
+
+ 
 
 --instance Serialize Test
