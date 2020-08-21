@@ -11,14 +11,20 @@ import           Data.Aeson                     ( ToJSON(..)
                                                 , decode
                                                 , encode
                                                 )
-import           Data.Aeson.Types        hiding ( String ,Key)
-import           Database.MongoDB hiding (Key)
+import           Data.Aeson.Types        hiding ( String
+                                                , Key
+                                                )
+import           Database.MongoDB        hiding ( Key )
 import           GHC.Generics
 import qualified Data.Text                     as T
 import           System.Environment             ( getEnv )
 
 
-import           Model.Utils                     ( MongoObject(..), ObjectKey(..), FromBSON(..), ToBSON(..))
+import           Model.Utils                    ( MongoObject(..)
+                                                , ObjectKey(..)
+                                                , FromBSON(..)
+                                                , ToBSON(..)
+                                                )
 import           Data.Time.Clock
 data Color = Red | Blue | White | Yellow | Green | Rainbow
             deriving(Generic, Show, Eq , ToJSON, FromJSON, ToBSON, FromBSON)
@@ -78,7 +84,7 @@ instance FromJSON User where
                 , email         = email
                 , password_hash = Nothing
                 , sessions      = sessions
-                , pwsalt = ""
+                , pwsalt        = ""
                 }
 
 
@@ -106,7 +112,8 @@ data Lobby = Lobby {lid:: ObjectKey,
                     gameId::Maybe String,
                     salt::String,
                     public::Bool,
-                    launched::Bool}
+                    launched::Bool,
+                    lobbyChatID:: String}
                     deriving (Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
 
 instance MongoObject Lobby where
@@ -114,3 +121,10 @@ instance MongoObject Lobby where
 
   insertId id session = session { lid = Key (show id) }
 
+data Chat = Chat{chatID:: ObjectKey, messages:: [String]}
+    deriving (Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
+
+instance MongoObject Chat where
+  collection _ = "chat"
+
+  insertId id chat = chat { chatID = Key (show id)}

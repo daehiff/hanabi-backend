@@ -37,7 +37,8 @@ import           Handler.Auth                   ( loginHandle
                                                 , registerHandle
                                                 )
 
-import           Handler.Lobby                  
+import           Handler.Lobby
+import           Handler.Chat
 import           Control.Monad.Trans.Reader     ( ReaderT
                                                 , ask
                                                 )
@@ -45,7 +46,7 @@ import           Data.Pool                      ( withResource )
 import           System.Environment             ( getEnv
                                                 , lookupEnv
                                                 )
-import Responses
+import           Responses
 
 
 createConfig :: IO AppConfig
@@ -63,7 +64,7 @@ createConfig = do
                       , dbName     = dbName
                       }
   port <- read <$> getEnv "PORT"
-  return AppConfig { dbConf = dbConf, port = port, jwtSecret="test" }
+  return AppConfig { dbConf = dbConf, port = port, jwtSecret = "test" }
 
 
 runApp :: IO ()
@@ -94,7 +95,8 @@ app = do
       post ("/lobby" <//> var <//> "kick" <//> var) $ kickPlayer
       get ("/lobby" <//> var <//> "status") $ getStatus
       post ("/lobby" <//> var <//> "launch") $ launchGame
-
+      -- Chat Routes
+      post ("/chat/" <//> var <//> "send") $ handleSendMessage
 
 
 

@@ -25,6 +25,7 @@ import           Data.HVect              hiding ( length
 import           Data.Time.Clock
 import           Model                          ( User(..)
                                                 , Lobby(..)
+                                                , Chat(..)
                                                 )
 import           Model.Utils
 import           Control.Monad.Trans
@@ -94,9 +95,12 @@ createLobby = do
       setStatus badRequest400
       json $ errorJson errorCreateLobby error
     (Right public) -> do
-      lobbys     <- findAvailableLobbys Nothing True
-      let salts = [ salt lobby | lobby <- lobbys ]
-      
+      lobbys <- findAvailableLobbys Nothing True
+      let salts        = [ salt lobby | lobby <- lobbys ]
+
+      chat <- insertObject Chat { chatID = NewKey, messages = [] }
+      let (Key _chatID) = chatID chat
+
       let host :: User = (findFirst oldCtx)
       let (Key _id)    = uid host
       now  <- liftIO getCurretISOTime
@@ -111,6 +115,7 @@ createLobby = do
                          , salt         = salt
                          , public       = public
                          , launched     = launched
+                         , lobbyChatID  = _chatID
                          }
       lobby <- insertObject lobbyC
       json $ sucessJson sucessCode lobby
