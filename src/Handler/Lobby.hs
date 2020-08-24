@@ -403,8 +403,10 @@ adjustSettings lobbyId = do
     -> AppHandle (HVect xs) (Either String Lobby)
   updateSettings (Left error) _            = return (Left error)
   updateSettings _            (Left error) = return (Left error)
-  updateSettings (Right settings) (Right lobby) =
-    return (Right lobby { gameSettings = settings })
+  updateSettings (Right settings) (Right lobby) = do
+    let newLobby = lobby { gameSettings = settings }
+    updateObject newLobby
+    return (Right newLobby)
 
 
 {-
