@@ -160,7 +160,7 @@ joinLobby salt = do
     >>= checkKickedPlayer user
     >>= checkHost user
     >>= userJoinLobby user
-    
+
   case (elobby) of
     (Left error) -> do
       setStatus badRequest400
@@ -212,7 +212,7 @@ joinLobby salt = do
     let newLobby = lobby { player = (_id : (player lobby)) }
     updateObject newLobby
     return (Right newLobby)
-  
+
 
 
 {-
@@ -288,28 +288,40 @@ kickPlayer lobbyId playerId = do
       json $ errorJson errorKickPlayer error
     (Right lobby) -> json $ sucessJson sucessCode lobby
  where
-  --isHost :: String -> Either String Lobby -> IO (Either String Lobby)
+  isHost
+    :: String
+    -> Either String Lobby
+    -> AppHandle (HVect xs) (Either String Lobby)
   isHost _      (Left  error) = return (Left error)
   isHost hostId (Right lobby) = do
     if not $ hostId == (lobbyHost lobby)
       then return (Left "You are not the Host of this lobby")
       else return (Right lobby)
 
-  --checkHost :: String -> Either String Lobby -> IO (Either String Lobby)
+  checkHost
+    :: String
+    -> Either String Lobby
+    -> AppHandle (HVect xs) (Either String Lobby)
   checkHost _      (Left  error) = return (Left error)
   checkHost userId (Right lobby) = do
     if userId == (lobbyHost lobby)
       then return (Left "you cannot kick yourself from lobby")
       else return (Right lobby)
 
-  --checkPlayer :: String -> Either String Lobby -> IO (Either String Lobby)
+  checkPlayer
+    :: String
+    -> Either String Lobby
+    -> AppHandle (HVect xs) (Either String Lobby)
   checkPlayer _      (Left  error) = return (Left error)
   checkPlayer userId (Right lobby) = do
     if not (userId `elem` (player lobby))
       then return (Left "player not in lobby")
       else return (Right lobby)
 
-  --updateLobby :: String -> (Either String Lobby) -> IO (Either String Lobby)
+  updateLobby
+    :: String
+    -> Either String Lobby
+    -> AppHandle (HVect xs) (Either String Lobby)
   updateLobby _      (Left  error) = return (Left error)
   updateLobby userId (Right lobby) = do
     let newLobby = lobby { player = [ x | x <- (player lobby), x /= userId ]
@@ -325,25 +337,28 @@ removeLobby lobbyId = do
 
   let user :: User = (findFirst oldCtx)
   let (Key userId) = uid user
-  elobby <-
-    findLobbyById lobbyId
-    >>= isHost user
+  elobby <- findLobbyById lobbyId >>= isHost user
   case elobby of
     (Left error) -> do
       setStatus badRequest400
       json $ errorJson errorRemoveLobby error
     (Right lobby) -> do
       let (Key _id) = (lid lobby)
-      (removedLobby::Maybe Lobby) <- removeObjectById _id
+      (removedLobby :: Maybe Lobby) <- removeObjectById _id
       case removedLobby of
-        Nothing -> json $ errorJson errorRemoveLobby ("Lobby doesn't exist, so no removing!"::String)
+        Nothing -> json $ errorJson
+          errorRemoveLobby
+          ("Lobby doesn't exist, so no removing!" :: String)
         (Just _lobby) -> json $ sucessJson sucessCode _lobby
  where
   isHost _ (Left error) = return (Left error)
   isHost user (Right lobby) =
     let (Key _id) = uid user
     in  if _id /= lobbyHost lobby
-          then (return (Left "You are not the host, so you cannot remove the lobby!"))
+          then
+            (return
+              (Left "You are not the host, so you cannot remove the lobby!")
+            )
           else (return (Right lobby))
 
 
@@ -359,21 +374,38 @@ adjustSettings lobbyId = do
           lSettings <- (obj .: "settings") :: Parser Settings
           return lSettings
         )
-  case eSettings of
+  eLobby <-
+    findLobbyById lobbyId
+    >>= checkIfGameAlreadyStarted
+    >>= checkAuthentication userId
+    >>= updateSettings eSettings
+  case eLobby of
     (Left error) -> do
+      setStatus badRequest400
       json $ errorJson errorAdjustSettings error
-    (Right lSettings) -> do
-      eLobby <- findLobbyById lobbyId >>= checkIfGameAlreadyStarted
-      case eLobby of
-        (Left  error) -> json $ errorJson lobbyNotFoundError error
-        (Right lobby) -> do
-          if (lobbyHost lobby) /= userId
-            then json $ errorJson
-              authError
-              ("You are not authenticated to change settings!" :: String)
-            else do
-              let newLobby = lobby { gameSettings = lSettings }
-              json $ sucessJson sucessCode newLobby
+    (Right lobby) -> do
+      json $ sucessJson sucessCode lobby
+
+ where
+  checkAuthentication
+    :: String
+    -> Either String Lobby
+    -> AppHandle (HVect xs) (Either String Lobby)
+  checkAuthentication _      (Left  error) = return (Left error)
+  checkAuthentication userId (Right lobby) = do
+    if (lobbyHost lobby) /= userId
+      then return (Left "You are not authenticated to change settings!")
+      else return (Right lobby)
+
+  updateSettings
+    :: Either String Settings
+    -> Either String Lobby
+    -> AppHandle (HVect xs) (Either String Lobby)
+  updateSettings (Left error) _            = return (Left error)
+  updateSettings _            (Left error) = return (Left error)
+  updateSettings (Right settings) (Right lobby) =
+    return (Right lobby { gameSettings = settings })
+
 
 {-
 @api {get} {{base_url}}/lobby/:lobbyId/status Lobby status
@@ -390,7 +422,9 @@ getStatus lobbyId = do
   let (Key userId) = uid user
   eLobby <- findLobbyById lobbyId >>= isInLobby userId
   case eLobby of
-    (Left  error) -> json $ errorJson errorJoinLobby error
+    (Left error) -> do
+      setStatus badRequest400
+      json $ errorJson errorJoinLobby error
     (Right lobby) -> json $ sucessJson sucessCode lobby
  where
   isInLobby _      (Left  error) = return (Left error)
@@ -418,6 +452,7 @@ launchGame lobbyId = do
     >>= areEnoughPlayer
     >>= updateLobby
     >>= checkIfGameAlreadyStarted
+
   case elobby of
     (Left error) -> do
       setStatus badRequest400
@@ -462,14 +497,14 @@ launchGame lobbyId = do
 checkIfGameAlreadyStarted
   :: (Either String Lobby) -> AppHandle (HVect xs) (Either String Lobby)
 checkIfGameAlreadyStarted (Left  error) = return (Left error)
-checkIfGameAlreadyStarted (Right lobby) = 
-  if (launched lobby)
-    then return (Left "Game already started!")
-    else return (Right lobby)
+checkIfGameAlreadyStarted (Right lobby) = if (launched lobby)
+  then return (Left "Game already started!")
+  else return (Right lobby)
 
-getUserHandle :: (ListContains n User xs) => String ->AppHandle (HVect xs) ()
+getUserHandle :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 getUserHandle _uid = do
   (eUser :: Maybe User) <- findById _uid
   case eUser of
-    Nothing -> json $ errorJson userNotFoundError ("User not found!"::String)
+    Nothing -> json $ errorJson userNotFoundError ("User not found!" :: String)
     (Just user) -> json $ sucessJson sucessCode user
+

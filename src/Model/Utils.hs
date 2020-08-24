@@ -203,5 +203,3 @@ class (ToBSON a, FromBSON a) => MongoObject a where {-MUST DEFINE: insertId, col
       return el
 
  
-
---instance Serialize Test
