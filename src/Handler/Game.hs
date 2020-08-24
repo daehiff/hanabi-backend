@@ -27,13 +27,16 @@ import           Data.ByteString.Lazy           ( fromStrict
 import qualified Data.Text                     as T
 import           Data.Aeson                     ( eitherDecode )
 import           Data.List                      ( find )
+import           Network.HTTP.Types             ( badRequest400 )
 
 getGameStatus :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 getGameStatus gameid = do
   eResult <- getGameFromDB gameid >>= filterOwnUser
   case eResult of
-    (Left  error) -> json $ errorJson 10 (error :: String)
-    (Right game ) -> json $ sucessJson sucessCode game
+    (Left error) -> do
+      setStatus badRequest400
+      json $ errorJson 10 (error :: String)
+    (Right game) -> json $ sucessJson sucessCode game
 
 filterOwnUser
   :: (ListContains n User xs)
@@ -63,8 +66,10 @@ makeMove gameId = do
     >>= (updateGameStatus eGame)
     >>= filterOwnUser
   case _eGame of
-    (Left  error) -> json $ errorJson 11 error
-    (Right game ) -> json $ sucessJson sucessCode game
+    (Left error) -> do
+      setStatus badRequest400
+      json $ errorJson 11 error
+    (Right game) -> json $ sucessJson sucessCode game
  where
   parseMoveBody :: ByteString -> Either String MoveAction
   parseMoveBody jsonByteString = eitherDecode jsonByteString
@@ -176,20 +181,25 @@ makeMove gameId = do
     _updateGameStatus game (DiscardAction { cardId = _cid }) =
       discardCard (currentPlayer game) _cid game
 
-getCards:: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
+getCards :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 getCards gameId = do
-  eGame      <- getGameFromDB gameId
+  eGame  <- getGameFromDB gameId
   _eGame <- filterOwnUser eGame
   case _eGame of
-    (Left  error) -> json $ errorJson 12 (error :: String)
-    (Right game ) -> do
-      let handCards = [ ((playerId player), (cards player)) | player <- players game ]
+    (Left error) -> do
+      setStatus badRequest400
+      json $ errorJson 12 (error :: String)
+    (Right game) -> do
+      let handCards =
+            [ ((playerId player), (cards player)) | player <- players game ]
       let tupleDiscardPile = ("discardPile", (discardPile game))
-      let cardIdsToFind = tupleDiscardPile : handCards
-      cardsToDisplay <- forM cardIdsToFind (\(string, list)-> do 
-        (mCards :: [Maybe Card]) <- forM list findById
-        let cards = [card | (Just card) <- mCards]
-        return (string, cards)
+      let cardIdsToFind    = tupleDiscardPile : handCards
+      cardsToDisplay <- forM
+        cardIdsToFind
+        (\(string, list) -> do
+          (mCards :: [Maybe Card]) <- forM list findById
+          let cards = [ card | (Just card) <- mCards ]
+          return (string, cards)
         )
       json $ sucessJson sucessCode cardsToDisplay
 
