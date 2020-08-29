@@ -35,6 +35,7 @@ import           Hooks                          ( initHook
                                                 )
 import           Handler.Auth                   ( loginHandle
                                                 , registerHandle
+                                                , getUser
                                                 )
 
 import           Handler.Lobby
@@ -102,6 +103,8 @@ app = do
     post "/auth/login" $ loginHandle
     post "/auth/register" $ registerHandle
     prehook authHook $ prehook updateJWTHook $ do
+      -- User Status
+      get "user/status" $ getUser
       -- Lobby Routes
       post "/lobby/create" $ createLobby
       get ("/lobby/find") findLobbys

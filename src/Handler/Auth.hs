@@ -1,5 +1,4 @@
-{-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
-
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables, GADTs #-}
 
 module Handler.Auth where
 
@@ -43,7 +42,10 @@ import           Control.Monad.Trans.Reader     ( ReaderT )
 import           Database.MongoDB               ( Pipe )
 import           Controller.Utils               ( parseBody )
 import qualified Data.ByteString.Char8         as BS8
-import           Data.HVect                     ( HVect )
+import           Data.HVect                     ( HVect
+                                                , ListContains
+                                                , findFirst
+                                                )
 
 
 
@@ -219,3 +221,9 @@ registerHandle = do
     return (Right insertedUser)
 
 
+getUser :: (ListContains n User xs) => AppHandle (HVect xs) ()
+getUser = do
+  oldCtx <- getContext
+  let user :: User = (findFirst oldCtx)
+  let (Key _uid)   = uid user
+  json $ sucessJson sucessCode user

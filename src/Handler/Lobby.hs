@@ -53,7 +53,10 @@ findAvailableLobbys Nothing public = do -- TODO is here a error?
   now <- liftIO getCurretISOTime
   let past = addUTCTime (-60 * 60 :: NominalDiffTime) (now)
   (mLobbys :: [Maybe Lobby]) <- findObjects
-    ["created" =: ["$gte" =: val past], "public" =: val public]
+    [ "created" =: ["$gte" =: val past]
+    , "public" =: val public
+    , "launched" =: False
+    ]
     []
   let lobbys = [ lobby | (Just lobby) <- mLobbys ]
   return lobbys
@@ -64,6 +67,7 @@ findAvailableLobbys (Just salt) public = do
     [ "created" =: ["$gte" =: val past]
     , "public" =: val public
     , "salt" =: val salt
+    , "launched" =: False
     ]
     []
   let lobbys = [ lobby | (Just lobby) <- mLobbys ]
@@ -401,8 +405,8 @@ adjustSettings lobbyId = do
     :: Either String Settings
     -> Either String Lobby
     -> AppHandle (HVect xs) (Either String Lobby)
-  updateSettings (Left error) _            = return (Left error)
-  updateSettings _            (Left error) = return (Left error)
+  updateSettings (Left error)     _             = return (Left error)
+  updateSettings _                (Left  error) = return (Left error)
   updateSettings (Right settings) (Right lobby) = do
     let newLobby = lobby { gameSettings = settings }
     updateObject newLobby
@@ -452,8 +456,8 @@ launchGame lobbyId = do
     findLobbyById lobbyId
     >>= isHost hostId
     >>= areEnoughPlayer
-    >>= updateLobby
     >>= checkIfGameAlreadyStarted
+    >>= updateLobby
 
   case elobby of
     (Left error) -> do
