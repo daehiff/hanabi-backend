@@ -29,6 +29,14 @@ import           Data.Aeson                     ( eitherDecode )
 import           Data.List                      ( find )
 import           Network.HTTP.Types             ( badRequest400 )
 
+import           Data.Aeson                     ( decode
+                                                , encode
+                                                )
+
+import           Data.Aeson.Types        hiding ( String
+                                                , Key
+                                                )
+
 getGameStatus :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 getGameStatus gameid = do
   eResult <- getGameFromDB gameid >>= filterOwnUser
@@ -196,12 +204,14 @@ getCards gameId = do
       let cardIdsToFind    = tupleDiscardPile : handCards
       cardsToDisplay <- forM
         cardIdsToFind
-        (\(string, list) -> do
-          (mCards :: [Maybe Card]) <- forM list findById
+        (\(name, _cardIds) -> do
+          (mCards :: [Maybe Card]) <- forM _cardIds findById
           let cards = [ card | (Just card) <- mCards ]
-          return (string, cards)
+          return ((T.pack name) , cards)
         )
-      json $ sucessJson sucessCode cardsToDisplay
+      let cardsToDisplayJson = object [name .= cards | (name, cards) <- cardsToDisplay]
+      json $ sucessJson sucessCode cardsToDisplayJson
+
 
 getGameFromDB :: String -> AppHandle (HVect xs) (Either String Game)
 getGameFromDB gameId = do
