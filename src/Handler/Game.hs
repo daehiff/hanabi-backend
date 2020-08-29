@@ -191,9 +191,8 @@ makeMove gameId = do
 
 getCards :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 getCards gameId = do
-  eGame  <- getGameFromDB gameId
-  _eGame <- filterOwnUser eGame
-  case _eGame of
+  eGame <- getGameFromDB gameId >>= filterOwnUser
+  case eGame of
     (Left error) -> do
       setStatus badRequest400
       json $ errorJson 12 (error :: String)
@@ -207,10 +206,62 @@ getCards gameId = do
         (\(name, _cardIds) -> do
           (mCards :: [Maybe Card]) <- forM _cardIds findById
           let cards = [ card | (Just card) <- mCards ]
-          return ((T.pack name) , cards)
+          return ((T.pack name), cards)
         )
-      let cardsToDisplayJson = object [name .= cards | (name, cards) <- cardsToDisplay]
+      let cardsToDisplayJson =
+            object [ name .= cards | (name, cards) <- cardsToDisplay ]
       json $ sucessJson sucessCode cardsToDisplayJson
+
+getOwnCards :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
+getOwnCards gameId = do
+  eCards <-
+    getGameFromDB gameId
+    >>= filterOtherUsers
+    >>= findOwnCards
+    >>= obfuscateCards
+  case (eCards) of
+    (Left error) -> do
+      setStatus badRequest400
+      json $ errorJson 12 (error :: String)
+    (Right cards) -> json $ sucessJson sucessCode cards
+ where
+  filterOtherUsers
+    :: (ListContains n User xs)
+    => Either String Game
+    -> AppHandle (HVect xs) (Either String Game)
+  filterOtherUsers (Left  error) = return (Left error)
+  filterOtherUsers (Right game ) = do
+    oldCtx <- getContext
+    let user :: User = (findFirst oldCtx)
+    let (Key _uid)   = uid user
+    let newGame = game
+          { players = filter (\player -> (playerId player) == _uid)
+                             (players game)
+          }
+    return (Right newGame)
+
+  findOwnCards
+    :: Either String Game -> AppHandle (HVect xs) (Either String [Card])
+  findOwnCards (Left  error) = return (Left error)
+  findOwnCards (Right game ) = do
+    let player = (players game) !! 0
+    (mOwnCards :: [Maybe Card]) <- forM (cards player) findById
+    let ownCards = [ card | (Just card) <- mOwnCards ]
+    return (Right ownCards)
+
+  obfuscateCards
+    :: Either String [Card] -> AppHandle (HVect xs) (Either String [Value])
+  obfuscateCards (Left  error) = return (Left error)
+  obfuscateCards (Right cards) = return
+    (Right
+      [ object
+          [ "cid" .= cid card
+          , "hintColor" .= hintColor card
+          , "hintNumber" .= hintNumber card
+          ]
+      | card <- cards
+      ]
+    )
 
 
 getGameFromDB :: String -> AppHandle (HVect xs) (Either String Game)
@@ -219,3 +270,5 @@ getGameFromDB gameId = do
   case mGame of
     Nothing     -> return (Left ("No game found with Id: " ++ gameId))
     (Just game) -> return (Right game)
+
+
