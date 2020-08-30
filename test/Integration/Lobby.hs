@@ -28,7 +28,9 @@ import           Data.Aeson.Types        hiding ( String
                                                 , Key
                                                 )
 import           Integration.Utils              ( errorResponse
-                                                , sucessResponse
+                                                , sucessResponse,
+                                                customGet,
+                                                customPost
                                                 )
 import           Responses
 
@@ -46,35 +48,35 @@ defaultUsers =
          , email         = "samplemail@mail.com"
          , password_hash = Just "supersaveandsecure"
          , sessions      = []
-         , pwsalt = ""
+         , pwsalt        = ""
          }
   , User { uid           = NewKey
          , username      = "annika"
          , email         = "samplemail1@mail.com"
          , password_hash = Just "supersaveandsecure"
          , sessions      = []
-         , pwsalt = ""
+         , pwsalt        = ""
          }
   , User { uid           = NewKey
          , username      = "davidH."
          , email         = "samplemail2@mail.com"
          , password_hash = Just "supersaveandsecure"
          , sessions      = []
-         , pwsalt = ""
+         , pwsalt        = ""
          }
   , User { uid           = NewKey
          , username      = "patsch"
          , email         = "samplemail3@mail.com"
          , password_hash = Just "supersaveandsecure"
          , sessions      = []
-         , pwsalt = ""
+         , pwsalt        = ""
          }
   , User { uid           = NewKey
          , username      = "leonBaum"
          , email         = "samplemail4@mail.com"
          , password_hash = Just "supersaveandsecure"
          , sessions      = []
-         , pwsalt = ""
+         , pwsalt        = ""
          }
   ]
 
@@ -96,11 +98,17 @@ loginUser user = do
   return (user, jwt)
 
 createLobbyJSON :: Bool -> ByteString
-createLobbyJSON public = encode $ (object ["public" .= public, "settings" .= Settings { amtLives  = 3
-                            , amtHints  = 8
-                            , level     = Hard
-                            , isRainbow = True
-                            }])
+createLobbyJSON public =
+  encode
+    $ (object
+        [ "public" .= public
+        , "settings" .= Settings { amtLives  = 3
+                                 , amtHints  = 8
+                                 , level     = Hard
+                                 , isRainbow = True
+                                 }
+        ]
+      )
 
 getLobbyFromResponse :: ByteString -> Either String Lobby
 getLobbyFromResponse bodyStr = parseBody
@@ -251,11 +259,14 @@ lobbyTest = before_ flushDB $ do
                  ""
         `shouldRespondWith` sucessResponse 200 sucessCode (lobbyK :: Lobby)
       customPost (packChars ("/lobby/join/" ++ salt lobby))
-            [("auth", user1jwt)]
-            ""
-        `shouldRespondWith` errorResponse 400 errorJoinLobby ("You have been kicked from this lobby" :: String)
-  describe "GET /lobby/:lobbyId/status" $ do 
-    it "descibes the status of the current Lobby" $ do 
+                 [("auth", user1jwt)]
+                 ""
+        `shouldRespondWith` errorResponse
+                              400
+                              errorJoinLobby
+                              ("You have been kicked from this lobby" :: String)
+  describe "GET /lobby/:lobbyId/status" $ do
+    it "descibes the status of the current Lobby" $ do
       let admin = defaultUsers !! 0
       (admin, adminjwt) <- setupUser admin
       requestCL         <-
@@ -263,10 +274,57 @@ lobbyTest = before_ flushDB $ do
       let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
       let (Key lobbyId) = lid lobby
       customGet (packChars ("/lobby/" ++ lobbyId ++ "/status"))
+                [("auth", adminjwt)]
+                ""
+        `shouldRespondWith` sucessResponse 200 sucessCode (lobby :: Lobby)
+
+  describe "POST /lobby/:lobbyId/launch" $ do
+    it "allows admin to launch the game" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key lobbyId) = lid lobby
+      customPost (packChars ("/lobby/join/" ++ salt lobby))
+                 [("auth", user1jwt)]
+                 ""
+      customPost (packChars ("/lobby/" ++ lobbyId ++ "/launch"))
                  [("auth", adminjwt)]
                  ""
-        `shouldRespondWith` sucessResponse 200 sucessCode (lobby :: Lobby) 
-customPost = request methodPost
-customGet = request methodGet
+        `shouldRespondWith` 200
+    it "catches invalid input" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key _id)     = uid user1
+      let (Key lobbyId) = lid lobby
+      customPost (packChars ("/lobby/join/" ++ salt lobby))
+                 [("auth", user1jwt)]
+                 ""
+      customPost (packChars ("/lobby/" ++ "invalidID" ++ "/leave"))
+                 [("auth", user1jwt)]
+                 ""
+        `shouldRespondWith` errorResponse 400
+                                          errorJoinLobby
+                                          ("Lobby not found" :: String)
+      customPost (packChars ("/lobby/" ++ lobbyId ++ "/leave"))
+                 [("auth", user1jwt)]
+                 ""
+      customPost (packChars ("/lobby/" ++ lobbyId ++ "/leave"))
+                 [("auth", user1jwt)]
+                 ""
+        `shouldRespondWith` errorResponse
+                              400
+                              errorJoinLobby
+                              ("You did not join this lobby or you already left." :: String
+                              )
+
 
 
