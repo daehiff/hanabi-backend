@@ -43,7 +43,7 @@ getGameStatus gameid = do
   case eResult of
     (Left error) -> do
       setStatus badRequest400
-      json $ errorJson gameNotFoundError (error :: String)
+      json $ errorJson errorGameStatus (error :: String)
     (Right game) -> json $ sucessJson sucessCode game
 
 filterOwnUser
@@ -57,8 +57,11 @@ filterOwnUser (Right game ) = do
   let (Key _uid)   = uid user
   let onlyOtherPlayers =
         [ player | player <- (players game), _uid /= (playerId player) ]
-  let newGame = game { players = onlyOtherPlayers }
-  return (Right newGame)
+  if (length (onlyOtherPlayers)) == (length (players game))
+    then return (Left "You are not part of the game!")
+    else return (Right (game { players = onlyOtherPlayers }))
+  --let newGame = game { players = onlyOtherPlayers }
+  --return (Right newGame)
 
 
 makeMove :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()

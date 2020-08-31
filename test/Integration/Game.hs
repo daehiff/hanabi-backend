@@ -86,4 +86,14 @@ gameTest = before_ flushDB $ do
                  ""
         )
         `shouldRespondWith` sucessResponse 200 sucessCode (game)
+    it "someone not in the game tries to get the status" $ do
+      (game, userList) <- createGame defaultUsers
+      let user2 = defaultUsers !! 2
+      (user2, user2jwt) <- setupUser user2
+      --let (admin, adminjwt) = userList !! 0
+      let (Key gameId)      = gid game
+      customGet (packChars ("/game/" ++ gameId ++ "/status"))
+                 [("auth", user2jwt)]
+                 ""
+        `shouldRespondWith` errorResponse 400 errorGameStatus ("You are not part of the game!" :: String)
   -- TODO test if user which is not in game can get the status

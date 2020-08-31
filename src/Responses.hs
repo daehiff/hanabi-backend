@@ -83,3 +83,6 @@ gameNotFoundError = 12
 
 errorMove :: Int
 errorMove = 13
+
+errorGameStatus :: Int
+errorGameStatus = 14
