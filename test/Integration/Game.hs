@@ -86,3 +86,4 @@ gameTest = before_ flushDB $ do
                  ""
         )
         `shouldRespondWith` sucessResponse 200 sucessCode (game)
+  -- TODO test if user which is not in game can get the status

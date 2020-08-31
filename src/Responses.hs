@@ -77,3 +77,9 @@ errorRemoveLobby = 10
 
 userNotFoundError :: Int
 userNotFoundError = 11
+
+gameNotFoundError :: Int
+gameNotFoundError = 12
+
+errorMove :: Int
+errorMove = 13

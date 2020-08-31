@@ -43,7 +43,7 @@ getGameStatus gameid = do
   case eResult of
     (Left error) -> do
       setStatus badRequest400
-      json $ errorJson 10 (error :: String)
+      json $ errorJson gameNotFoundError (error :: String)
     (Right game) -> json $ sucessJson sucessCode game
 
 filterOwnUser
@@ -76,7 +76,7 @@ makeMove gameId = do
   case _eGame of
     (Left error) -> do
       setStatus badRequest400
-      json $ errorJson 11 error
+      json $ errorJson errorMove error
     (Right game) -> json $ sucessJson sucessCode game
  where
   parseMoveBody :: ByteString -> Either String MoveAction
@@ -195,7 +195,7 @@ getCards gameId = do
   case eGame of
     (Left error) -> do
       setStatus badRequest400
-      json $ errorJson 12 (error :: String)
+      json $ errorJson gameNotFoundError (error :: String)
     (Right game) -> do
       let handCards =
             [ ((playerId player), (cards player)) | player <- players game ]
@@ -222,7 +222,7 @@ getOwnCards gameId = do
   case (eCards) of
     (Left error) -> do
       setStatus badRequest400
-      json $ errorJson 12 (error :: String)
+      json $ errorJson gameNotFoundError (error :: String)
     (Right cards) -> json $ sucessJson sucessCode cards
  where
   filterOtherUsers

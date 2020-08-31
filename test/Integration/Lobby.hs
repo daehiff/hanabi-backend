@@ -308,12 +308,12 @@ lobbyTest = before_ flushDB $ do
       customPost (packChars ("/lobby/join/" ++ salt lobby))
                  [("auth", user1jwt)]
                  ""
-      customPost (packChars ("/lobby/" ++ "invalidID" ++ "/leave"))
+      customPost (packChars ("/lobby/" ++ lobbyId ++ "/launch"))
                  [("auth", user1jwt)]
                  ""
         `shouldRespondWith` errorResponse 400
-                                          errorJoinLobby
-                                          ("Lobby not found" :: String)
+                                          errorLaunch
+                                          ("You are not the Host of this lobby" :: String)
       customPost (packChars ("/lobby/" ++ lobbyId ++ "/leave"))
                  [("auth", user1jwt)]
                  ""
@@ -325,6 +325,9 @@ lobbyTest = before_ flushDB $ do
                               errorJoinLobby
                               ("You did not join this lobby or you already left." :: String
                               )
+      -- TODO: test lobby join after game launched
+      -- TODO: test lobby kick after game launched
+      -- TODO: test lobby launch twice -> but should work
 
 
 
