@@ -472,8 +472,8 @@ launchGame lobbyId = do
     if (length ((lobbyHost lobby) : player lobby)) < 2
       then return (Left "To few player in the Lobby.")
       else do
-        if ((length (player lobby)) > 5)
-          then return (Left "To much player are in the Lobby.")
+        if (length ((lobbyHost lobby) : player lobby)) > 5
+          then return (Left "To many players in the Lobby.")
           else return (Right lobby)
   updateLobby
     :: Either String Lobby -> AppHandle (HVect xs) (Either String Lobby)
