@@ -196,7 +196,7 @@ getCards gameId = do
   case eGame of
     (Left error) -> do
       setStatus badRequest400
-      json $ errorJson gameNotFoundError (error :: String)
+      json $ errorJson gameOrPlayerNotFoundError (error :: String)
     (Right game) -> do
       let handCards =
             [ ((playerId player), (cards player)) | player <- players game ]
@@ -223,7 +223,7 @@ getOwnCards gameId = do
   case (eCards) of
     (Left error) -> do
       setStatus badRequest400
-      json $ errorJson gameNotFoundError (error :: String)
+      json $ errorJson gameOrPlayerNotFoundError (error :: String)
     (Right cards) -> json $ sucessJson sucessCode cards
  where
   filterOtherUsers
@@ -235,11 +235,10 @@ getOwnCards gameId = do
     oldCtx <- getContext
     let user :: User = (findFirst oldCtx)
     let (Key _uid)   = uid user
-    let newGame = game
-          { players = filter (\player -> (playerId player) == _uid)
-                             (players game)
-          }
-    return (Right newGame)
+    let sender = filter (\player -> (playerId player) == _uid) (players game)
+    if sender == []
+      then return (Left "You are not part of the game!")
+      else return (Right game { players = sender})
 
   findOwnCards
     :: Either String Game -> AppHandle (HVect xs) (Either String [Card])

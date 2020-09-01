@@ -41,32 +41,7 @@ import           Integration.Lobby              ( defaultUsers
 import           Responses
 
 import           Controller.Utils               ( parseBody )
-import Controller.Game (giveHint)
-
--- createHintJSON targetId =
---   encode
---     $ (object
---         [  "target" .= targetId
---         , "color" .= Red
---         , "tag" .= HintAction
---         ]
---       )
-
--- createPlayJSON cardId =
---   encode
---     $ (object
---         [  "cardId" .= cardId
---         , "tag" .= PlayAction
---         ]
---         )
-        
--- createDiscardJSON cardId =
---   encode
---     $ (object
---         [  "cardId" .= cardId
---         , "tag" .= DiscardAction
---         ]
---         )
+import           Controller.Game                ( giveHint )
 
 getGameFromResponse :: ByteString -> Either String Game
 getGameFromResponse bodyStr = parseBody
@@ -94,15 +69,16 @@ createGame users = do
   let (Right launchedLobby) = getLobbyFromResponse (simpleBody requestLl)
   let (Just launchedGameId) = gameId launchedLobby
   requestG <- customGet (packChars ("/game/" ++ launchedGameId ++ "/status"))
-                       [("auth", adminjwt)]
-                       ""
+                        [("auth", adminjwt)]
+                        ""
   let (Right gameA) = getGameFromResponse (simpleBody requestG)
   requestG1 <- customGet (packChars ("/game/" ++ launchedGameId ++ "/status"))
-                       [("auth", user1jwt)]
-                       ""
+                         [("auth", user1jwt)]
+                         ""
   let (Right game1) = getGameFromResponse (simpleBody requestG1)
-  let admingPlayer = filter (\player -> (playerId player) /= _id) (players game1)
-  let game = gameA {players = (admingPlayer!!0 : (players gameA))}
+  let admingPlayer =
+        filter (\player -> (playerId player) /= _id) (players game1)
+  let game = gameA { players = (admingPlayer !! 0 : (players gameA)) }
   return (game, [(admin, adminjwt), (user1, user1jwt)])
 
 
@@ -114,30 +90,48 @@ gameTest = before_ flushDB $ do
       let (Key gameId)      = gid game
       let (Key adminId)     = uid admin
       customGet (packChars ("/game/" ++ gameId ++ "/status"))
-                 [("auth", adminjwt)]
-                 ""
-        `shouldRespondWith` sucessResponse 200 sucessCode (game
-          { players = filter (\player -> (playerId player) /= adminId)
-                             (players game)
-          })
+                [("auth", adminjwt)]
+                ""
+        `shouldRespondWith` sucessResponse
+                              200
+                              sucessCode
+                              (game
+                                { players = filter
+                                              (\player ->
+                                                (playerId player) /= adminId
+                                              )
+                                              (players game)
+                                }
+                              )
       let (user1, user1jwt) = userList !! 1
       let (Key user1Id)     = uid user1
       (customGet (packChars ("/game/" ++ gameId ++ "/status"))
                  [("auth", user1jwt)]
                  ""
         )
-        `shouldRespondWith` sucessResponse 200 sucessCode (game
-          { players = filter (\player -> (playerId player) /= user1Id)
-                             (players game)})
+        `shouldRespondWith` sucessResponse
+                              200
+                              sucessCode
+                              (game
+                                { players = filter
+                                              (\player ->
+                                                (playerId player) /= user1Id
+                                              )
+                                              (players game)
+                                }
+                              )
     it "someone not in the game tries to get the status" $ do
       (game, userList) <- createGame defaultUsers
       let user2 = defaultUsers !! 2
       (user2, user2jwt) <- setupUser user2
-      let (Key gameId)      = gid game
+      let (Key gameId) = gid game
       customGet (packChars ("/game/" ++ gameId ++ "/status"))
-                 [("auth", user2jwt)]
-                 ""
-        `shouldRespondWith` errorResponse 400 errorGameStatus ("You are not part of the game!" :: String)
+                [("auth", user2jwt)]
+                ""
+        `shouldRespondWith` errorResponse
+                              400
+                              errorGameStatus
+                              ("You are not part of the game!" :: String)
 
   describe "POST /game/:gameid/move" $ do
     it "make valid hint move" $ do
@@ -146,8 +140,10 @@ gameTest = before_ flushDB $ do
       let (user1, user1jwt) = userList !! 1
       let (Key user1Id)     = uid user1
       let (Key gameId)      = gid game
-      customPost (packChars ("/game/" ++ gameId ++ "/move")) [("auth", adminjwt)]
-                  (encode HintAction {targetPlayer = user1Id, hint = (Left Red)})
+      customPost
+          (packChars ("/game/" ++ gameId ++ "/move"))
+          [("auth", adminjwt)]
+          (encode HintAction { targetPlayer = user1Id, hint = (Left Red) })
         `shouldRespondWith` 200
     it "make valid play move" $ do
       (game, userList) <- createGame defaultUsers
@@ -155,12 +151,15 @@ gameTest = before_ flushDB $ do
       let (user1, user1jwt) = userList !! 1
       let (Key adminId)     = uid admin
       let (Key gameId)      = gid game
-      let mcurrPlayer = find (\player -> playerId player == adminId) (players game)
+      let mcurrPlayer =
+            find (\player -> playerId player == adminId) (players game)
       case mcurrPlayer of
         Nothing -> undefined
-        (Just currPlayer) -> 
-          customPost (packChars ("/game/" ++ gameId ++ "/move")) [("auth", adminjwt)]
-                  (encode PlayAction {cardId = ((cards currPlayer) !! 0)})
+        (Just currPlayer) ->
+          customPost
+              (packChars ("/game/" ++ gameId ++ "/move"))
+              [("auth", adminjwt)]
+              (encode PlayAction { cardId = ((cards currPlayer) !! 0) })
             `shouldRespondWith` 200
     it "make valid discard move" $ do
       (game, userList) <- createGame defaultUsers
@@ -170,27 +169,39 @@ gameTest = before_ flushDB $ do
       let (Key user1Id)     = uid user1
       let (Key gameId)      = gid game
       --need to give a hint first, so not all the hints are available and therefore the discard option is blocked
-      customPost (packChars ("/game/" ++ gameId ++ "/move")) [("auth", adminjwt)]
-                  (encode HintAction {targetPlayer = user1Id, hint = (Left Red)})
-      let mcurrPlayer = find (\player -> playerId player == user1Id) (players game)
+      customPost
+        (packChars ("/game/" ++ gameId ++ "/move"))
+        [("auth", adminjwt)]
+        (encode HintAction { targetPlayer = user1Id, hint = (Left Red) })
+      let mcurrPlayer =
+            find (\player -> playerId player == user1Id) (players game)
       case mcurrPlayer of
         Nothing -> undefined
-        (Just currPlayer) -> 
-          customPost (packChars ("/game/" ++ gameId ++ "/move")) [("auth", user1jwt)]
-                  (encode DiscardAction {cardId = ((cards currPlayer) !! 0)})
+        (Just currPlayer) ->
+          customPost
+              (packChars ("/game/" ++ gameId ++ "/move"))
+              [("auth", user1jwt)]
+              (encode DiscardAction { cardId = ((cards currPlayer) !! 0) })
             `shouldRespondWith` 200
     it "not able to discard, because the hints are full" $ do
       (game, userList) <- createGame defaultUsers
       let (admin, adminjwt) = userList !! 0
       let (Key adminId)     = uid admin
       let (Key gameId)      = gid game
-      let mcurrPlayer = find (\player -> playerId player == adminId) (players game)
+      let mcurrPlayer =
+            find (\player -> playerId player == adminId) (players game)
       case mcurrPlayer of
         Nothing -> undefined
-        (Just currPlayer) -> 
-          customPost (packChars ("/game/" ++ gameId ++ "/move")) [("auth", adminjwt)]
-                  (encode DiscardAction {cardId = ((cards currPlayer) !! 0)})
-            `shouldRespondWith` errorResponse 400 errorMove ("Cannot discard, because max amount of hints is reached!" :: String)
+        (Just currPlayer) ->
+          customPost
+              (packChars ("/game/" ++ gameId ++ "/move"))
+              [("auth", adminjwt)]
+              (encode DiscardAction { cardId = ((cards currPlayer) !! 0) })
+            `shouldRespondWith` errorResponse
+                                  400
+                                  errorMove
+                                  ("Cannot discard, because max amount of hints is reached!" :: String
+                                  )
     it "tries to discard someone else's card" $ do
       (game, userList) <- createGame defaultUsers
       let (admin, adminjwt) = userList !! 0
@@ -199,15 +210,23 @@ gameTest = before_ flushDB $ do
       let (Key user1Id)     = uid user1
       let (Key gameId)      = gid game
       --need to give a hint first, so not all the hints are available and therefore the discard option is blocked
-      customPost (packChars ("/game/" ++ gameId ++ "/move")) [("auth", adminjwt)]
-                  (encode HintAction {targetPlayer = user1Id, hint = (Left Red)})
-      let mcurrPlayer = find (\player -> playerId player == adminId) (players game)
+      customPost
+        (packChars ("/game/" ++ gameId ++ "/move"))
+        [("auth", adminjwt)]
+        (encode HintAction { targetPlayer = user1Id, hint = (Left Red) })
+      let mcurrPlayer =
+            find (\player -> playerId player == adminId) (players game)
       case mcurrPlayer of
         Nothing -> undefined
-        (Just currPlayer) -> 
-          customPost (packChars ("/game/" ++ gameId ++ "/move")) [("auth", user1jwt)]
-                  (encode DiscardAction {cardId = ((cards currPlayer) !! 0)})
-            `shouldRespondWith` errorResponse 400 errorMove ("Card not discardable!"::String)
+        (Just currPlayer) ->
+          customPost
+              (packChars ("/game/" ++ gameId ++ "/move"))
+              [("auth", user1jwt)]
+              (encode DiscardAction { cardId = ((cards currPlayer) !! 0) })
+            `shouldRespondWith` errorResponse
+                                  400
+                                  errorMove
+                                  ("Card not discardable!" :: String)
     it "tries to play someone else's card" $ do
       (game, userList) <- createGame defaultUsers
       let (admin, adminjwt) = userList !! 0
@@ -215,10 +234,133 @@ gameTest = before_ flushDB $ do
       let (Key adminId)     = uid admin
       let (Key user1Id)     = uid user1
       let (Key gameId)      = gid game
-      let mcurrPlayer = find (\player -> playerId player == user1Id) (players game)
+      let mcurrPlayer =
+            find (\player -> playerId player == user1Id) (players game)
       case mcurrPlayer of
         Nothing -> undefined
-        (Just currPlayer) -> 
-          customPost (packChars ("/game/" ++ gameId ++ "/move")) [("auth", adminjwt)]
-                  (encode PlayAction {cardId = ((cards currPlayer) !! 0)})
-            `shouldRespondWith` errorResponse 400 errorMove ("Card not playable!"::String)
+        (Just currPlayer) ->
+          customPost
+              (packChars ("/game/" ++ gameId ++ "/move"))
+              [("auth", adminjwt)]
+              (encode PlayAction { cardId = ((cards currPlayer) !! 0) })
+            `shouldRespondWith` errorResponse
+                                  400
+                                  errorMove
+                                  ("Card not playable!" :: String)
+    it "not your turn to give a hint" $ do
+      (game, userList) <- createGame defaultUsers
+      let (admin, adminjwt) = userList !! 0
+      let (user1, user1jwt) = userList !! 1
+      let (Key adminId)     = uid admin
+      let (Key user1Id)     = uid user1
+      let (Key gameId)      = gid game
+      let mcurrPlayer =
+            find (\player -> playerId player == user1Id) (players game)
+      case mcurrPlayer of
+        Nothing -> undefined
+        (Just currPlayer) ->
+          customPost
+              (packChars ("/game/" ++ gameId ++ "/move"))
+              [("auth", user1jwt)]
+              (encode HintAction { targetPlayer = adminId, hint = (Left Red) })
+            `shouldRespondWith` errorResponse
+                                  400
+                                  errorMove
+                                  ("It's not your turn!" :: String)
+    it "not your turn to play" $ do
+      (game, userList) <- createGame defaultUsers
+      let (user1, user1jwt) = userList !! 1
+      let (Key user1Id)     = uid user1
+      let (Key gameId)      = gid game
+      let mcurrPlayer =
+            find (\player -> playerId player == user1Id) (players game)
+      case mcurrPlayer of
+        Nothing -> undefined
+        (Just currPlayer) ->
+          customPost
+              (packChars ("/game/" ++ gameId ++ "/move"))
+              [("auth", user1jwt)]
+              (encode PlayAction { cardId = ((cards currPlayer) !! 0) })
+            `shouldRespondWith` errorResponse
+                                  400
+                                  errorMove
+                                  ("It's not your turn!" :: String)
+    it "not your turn to discard" $ do
+      (game, userList) <- createGame defaultUsers
+      let (user1, user1jwt) = userList !! 1
+      let (Key user1Id)     = uid user1
+      let (Key gameId)      = gid game
+      let mcurrPlayer =
+            find (\player -> playerId player == user1Id) (players game)
+      case mcurrPlayer of
+        Nothing -> undefined
+        (Just currPlayer) ->
+          customPost
+              (packChars ("/game/" ++ gameId ++ "/move"))
+              [("auth", user1jwt)]
+              (encode DiscardAction { cardId = ((cards currPlayer) !! 0) })
+            `shouldRespondWith` errorResponse
+                                  400
+                                  errorMove
+                                  ("It's not your turn!" :: String)
+  describe "GET /game/:gameid/cards" $ do
+    it "get all the cards in the game, except of your own" $ do
+      (game, userList) <- createGame defaultUsers
+      let (admin, adminjwt) = userList !! 0
+      let (Key gameId)      = gid game
+      let (Key adminId)     = uid admin
+      customGet (packChars ("/game/" ++ gameId ++ "/cards"))
+                [("auth", adminjwt)]
+                ""
+        `shouldRespondWith` 200
+      -- test the same for the second player
+      let (user1, user1jwt) = userList !! 1
+      let (Key user1Id)     = uid user1
+      (customGet (packChars ("/game/" ++ gameId ++ "/cards"))
+                 [("auth", user1jwt)]
+                 ""
+        )
+        `shouldRespondWith` 200
+    it "someone not in the game tries to get the cards" $ do
+      (game, userList) <- createGame defaultUsers
+      let user2 = defaultUsers !! 2
+      (user2, user2jwt) <- setupUser user2
+      let (Key gameId) = gid game
+      customGet (packChars ("/game/" ++ gameId ++ "/cards"))
+                [("auth", user2jwt)]
+                ""
+        `shouldRespondWith` errorResponse
+                              400
+                              gameOrPlayerNotFoundError
+                              ("You are not part of the game!" :: String)
+  describe "GET /game/:gameid/ownCards" $ do
+    it "get own cards without number and color information" $ do
+      (game, userList) <- createGame defaultUsers
+      let (admin, adminjwt) = userList !! 0
+      let (Key gameId)      = gid game
+      let (Key adminId)     = uid admin
+      customGet (packChars ("/game/" ++ gameId ++ "/ownCards"))
+                [("auth", adminjwt)]
+                ""
+        `shouldRespondWith` 200
+      -- test the same for the second player
+      let (user1, user1jwt) = userList !! 1
+      let (Key user1Id)     = uid user1
+      (customGet (packChars ("/game/" ++ gameId ++ "/ownCards"))
+                 [("auth", user1jwt)]
+                 ""
+        )
+        `shouldRespondWith` 200
+    it "someone not in the game tries to get own cards" $ do
+      (game, userList) <- createGame defaultUsers
+      let user2 = defaultUsers !! 2
+      (user2, user2jwt) <- setupUser user2
+      let (Key gameId) = gid game
+      customGet (packChars ("/game/" ++ gameId ++ "/ownCards"))
+                [("auth", user2jwt)]
+                ""
+        `shouldRespondWith` errorResponse
+                              400
+                              gameOrPlayerNotFoundError
+                              ("You are not part of the game!" :: String)
+-- TODO: all the game ended tests are still missing
