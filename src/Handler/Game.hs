@@ -60,8 +60,6 @@ filterOwnUser (Right game ) = do
   if (length (onlyOtherPlayers)) == (length (players game))
     then return (Left "You are not part of the game!")
     else return (Right (game { players = onlyOtherPlayers }))
-  --let newGame = game { players = onlyOtherPlayers }
-  --return (Right newGame)
 
 
 makeMove :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()

@@ -196,8 +196,7 @@ lobbyTest = before_ flushDB $ do
         `shouldRespondWith` errorResponse
                               400
                               errorJoinLobby
-                              ("Could not find Lobby with salt: stupid-salt" :: String
-                              )
+                              ("Could not find Lobby with salt: stupid-salt" :: String)
   describe "POST /lobby/:lobbyId/leave" $ do
     it "allows joined users to leave" $ do
       let admin = defaultUsers !! 0
@@ -244,8 +243,7 @@ lobbyTest = before_ flushDB $ do
         `shouldRespondWith` errorResponse
                               400
                               errorJoinLobby
-                              ("You did not join this lobby or you already left." :: String
-                              )
+                              ("You did not join this lobby or you already left." :: String)
   describe "POST /lobby/:lobbyId/kick/:userId" $ do
     it "kicks player and does not allow him to join" $ do
       let admin = defaultUsers !! 0
