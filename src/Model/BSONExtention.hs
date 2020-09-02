@@ -9,6 +9,9 @@
 {-# LANGUAGE MultiParamTypeClasses  #-}
 {-# LANGUAGE ScopedTypeVariables    #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE FunctionalDependencies #-}
+
 
 module Model.BSONExtention where
 
@@ -19,9 +22,17 @@ import           Control.Monad
 
 import qualified Data.Bson                     as BSON
                                                 ( lookup )
-import           Data.Bson
+import           Data.Bson                      ( Val(..)
+                                                , Label(..)
+                                                , Value(..)
+                                                , Document
+                                                , ObjectId(..)
+                                                , (=:)
+                                                )
 import qualified Data.Text                     as T
-                                                ( pack, unpack )
+                                                ( pack
+                                                , unpack
+                                                )
 import           Data.Typeable
 
 import           Data.Aeson                     ( ToJSON(..)
@@ -38,8 +49,9 @@ instance ToJSON ObjectKey where
   toJSON (Key id) = toJSON id
 
 instance FromJSON ObjectKey where
-  parseJSON AE.Null = return NewKey
+  parseJSON AE.Null        = return NewKey
   parseJSON (AE.String id) = return (Key (T.unpack id))
+
 
 constructorLabel :: Label
 constructorLabel = T.pack "_co"
@@ -64,7 +76,7 @@ class GToBSON f where
 
 
 instance GToBSON U1 where
-    genericToBSON U1 = []
+  genericToBSON U1 = []
 
 instance (GToBSON a, GToBSON b) => GToBSON (a :*: b) where
   genericToBSON (x :*: y) = genericToBSON x ++ genericToBSON y
@@ -80,7 +92,6 @@ instance (GToBSON a, Constructor c) => GToBSON (C1 c a) where
   genericToBSON c@(M1 x) = genericToBSON x ++ [constructorLabel =: conName c]
 
 instance (Val a, Selector s) => GToBSON (S1 s (K1 i a)) where
-  --genericToBSON (M1 (K1 (Key id))) = [keyLabel =: id]
   genericToBSON s@(M1 (K1 x)) = [T.pack (selName s) =: x]
 
 instance {-# OVERLAPPING #-} (Selector s) => GToBSON (S1 s (K1 i ObjectKey)) where

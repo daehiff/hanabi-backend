@@ -45,6 +45,9 @@ dependencies:
   - transformers
   - hslogger
   - iso8601-time
+  - random-shuffle
+  - array
+  - split
 
 library:
   source-dirs:
