@@ -97,6 +97,8 @@ app = do
       post ("/lobby" <//> var <//> "launch") $ launchGame
       -- Chat Routes
       post ("/chat/" <//> var <//> "send") $ handleSendMessage
+      get ("/chat/" <//> var <//> "status") $ getChatStatus
+      -- TODO: get status vom chat
 
 
 

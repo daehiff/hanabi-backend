@@ -121,7 +121,10 @@ instance MongoObject Lobby where
 
   insertId id session = session { lid = Key (show id) }
 
-data Chat = Chat{chatID:: ObjectKey, messages:: [String]}
+data Message = Message {message:: String, timestamp:: UTCTime, sender:: String}  
+                deriving (Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
+
+data Chat = Chat{chatID:: ObjectKey, messages:: [Message]}
     deriving (Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
 
 instance MongoObject Chat where

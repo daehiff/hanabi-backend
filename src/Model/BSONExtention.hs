@@ -47,10 +47,11 @@ constructorLabel = T.pack "_co"
 keyLabel :: Label
 keyLabel = T.pack "_id"
 
-data Test = Test{tid::ObjectKey, name::String} deriving (Show, Generic, Typeable)
 
-instance ToBSON Test
-instance FromBSON Test
+instance {-# OVERLAPPABLE #-} (FromBSON a, ToBSON a, Typeable a, Show a, Eq a) => Val a where
+  val x = Doc $ toBSON x
+  cast' (Doc x) = fromBSON x
+  cast' _       = Nothing
 
 class ToBSON a where
     toBSON :: a -> Document
@@ -60,6 +61,7 @@ class ToBSON a where
 
 class GToBSON f where
     genericToBSON :: f a -> Document
+
 
 instance GToBSON U1 where
     genericToBSON U1 = []
