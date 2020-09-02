@@ -44,6 +44,7 @@ dependencies:
   - resource-pool
   - transformers
   - hslogger
+  - iso8601-time
 
 library:
   source-dirs:

@@ -119,6 +119,25 @@ findUpdateChat _chatID (Right message) = do
       return (Right newChat)
 
 
+{-
+@api {get} {{base_url}}/chat/status Send message 
+@apiName status
+@apiGroup Chat
+@apiHeader {String} auth Users auth Token.
+@apiDescription Get status with ChatID
+@apiErrorExample {json} Sample Input:
+{
+    "chatID": "5f4f61486f74963fa8000000",
+    "messages": [
+                {
+                    "sender": "5f3f92216f74961968000000",
+                    "message": "adddadad",
+                    "timestamp": "2020-09-02T09:17:14Z"
+                }
+                ]
+}
+-}
+
 getChatStatus :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 getChatStatus chatId = do
   oldCtx <- getContext
