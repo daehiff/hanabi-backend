@@ -239,7 +239,7 @@ makeMove gameId = do
 -}
 getCards :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 getCards gameId = do
-  eGame <- getGameFromDB gameId >>= isGameAlreadyOver >>= filterOwnUser
+  eGame <- getGameFromDB gameId >>= filterOwnUser
   case eGame of
     (Left error) -> do
       setStatus badRequest400
