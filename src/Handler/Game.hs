@@ -175,19 +175,19 @@ makeMove gameId = do
           Nothing      -> return (Left "You are not part of the game!")
           Just _player -> return (Right _player)
 
-  checkHint (Left error) = return (Left error)
-  checkHint (Right HintAction { targetPlayer = _targetPId, hint = eHint })
-    = do
-      case eHint of
-        (Right number) -> do
-          if number < 1 || number > 5
-            then return (Left "You can only give number hints from 1-5!")
-            else return (Right HintAction { targetPlayer = _targetPId, hint = eHint })
-        (Left color) -> do
-          if color == Rainbow
-            then return (Left "You cannot give Rainbow hints!")
-            else return
-              (Right HintAction { targetPlayer = _targetPId, hint = eHint })
+  checkHint (Left  error) = return (Left error)
+  checkHint (Right HintAction { targetPlayer = _targetPId, hint = eHint }) = do
+    case eHint of
+      (Right number) -> do
+        if number < 1 || number > 5
+          then return (Left "You can only give number hints from 1-5!")
+          else return
+            (Right HintAction { targetPlayer = _targetPId, hint = eHint })
+      (Left color) -> do
+        if color == Rainbow
+          then return (Left "You cannot give Rainbow hints!")
+          else return
+            (Right HintAction { targetPlayer = _targetPId, hint = eHint })
 
   doesPlayerHintHimself _ (Left error) = return (Left error)
   doesPlayerHintHimself _uid (Right HintAction { targetPlayer = _targetPId, hint = eHint })
@@ -294,7 +294,7 @@ getOwnCards gameId = do
     let sender = filter (\player -> (playerId player) == _uid) (players game)
     if sender == []
       then return (Left "You are not part of the game!")
-      else return (Right game { players = sender})
+      else return (Right game { players = sender })
 
   findOwnCards
     :: Either String Game -> AppHandle (HVect xs) (Either String [Card])
@@ -327,9 +327,9 @@ getGameFromDB gameId = do
     Nothing     -> return (Left ("No game found with Id: " ++ gameId))
     (Just game) -> return (Right game)
 
-isGameAlreadyOver :: Either String Game -> AppHandle (HVect xs) (Either String Game)
-isGameAlreadyOver (Left error) = return (Left error)
-isGameAlreadyOver (Right game) = 
-        if (state game) == Won || (state game) == Lost
-          then return (Left "Game already ended!")
-          else return (Right game)
+isGameAlreadyOver
+  :: Either String Game -> AppHandle (HVect xs) (Either String Game)
+isGameAlreadyOver (Left  error) = return (Left error)
+isGameAlreadyOver (Right game ) = if (state game) == Won || (state game) == Lost
+  then return (Left "Game already ended!")
+  else return (Right game)
