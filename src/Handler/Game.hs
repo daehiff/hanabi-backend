@@ -272,7 +272,6 @@ getOwnCards :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 getOwnCards gameId = do
   eCards <-
     getGameFromDB gameId
-    >>= isGameAlreadyOver
     >>= filterOtherUsers
     >>= findOwnCards
     >>= obfuscateCards
