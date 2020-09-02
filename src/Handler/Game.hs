@@ -37,6 +37,14 @@ import           Data.Aeson.Types        hiding ( String
                                                 , Key
                                                 )
 
+{-
+@api {get} {{base_url}}/game/:gameId/status status Game
+@apiName status 
+@apiGroup Game
+@apiParam {String} gameId UUID of the Game
+@apiHeader {String} auth Users auth Token
+@apiDescription get the current status of the game (you are not able to see yourself, because you are not supposed to know your own cards)
+-}
 getGameStatus :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 getGameStatus gameid = do
   eResult <- getGameFromDB gameid >>= filterOwnUser
@@ -61,7 +69,36 @@ filterOwnUser (Right game ) = do
     then return (Left "You are not part of the game!")
     else return (Right (game { players = onlyOtherPlayers }))
 
-
+{-
+@api {post} {{base_url}}/game/:gameId/move move Game
+@apiName move 
+@apiGroup Game
+@apiParam {String} gameId UUID of the Game
+@apiHeader {String} auth Users auth Token
+@apiDescription make a move (if it is your turn): hint someone, discard a card or play a card
+@apiErrorExample {json} Sample Input Discard:
+{
+    "tag": "DiscardAction",
+    "cardId": "5f3ab63af03f427b19000807"
+}
+@apiErrorExample {json} Sample Input Play:
+{
+    "tag": "PlayAction",
+    "cardId": "5f3ab63af03f427b19000807"
+}
+@apiErrorExample {json} Sample Input Color-Hint:
+{
+    "tag": "HintAction",
+    "targetPlayer": "5f3a9debf03f427b19000174",
+    "hint": {"Left": "Red"}
+}
+@apiErrorExample {json} Sample Input Number-Hint:
+{
+    "tag": "HintAction",
+    "targetPlayer": "5f3a9debf03f427b19000174",
+    "hint": {"Right": 5}
+}
+-}
 makeMove :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 makeMove gameId = do
   rawBodyStr <- fromStrict <$> body
@@ -190,9 +227,17 @@ makeMove gameId = do
     _updateGameStatus game (DiscardAction { cardId = _cid }) =
       discardCard (currentPlayer game) _cid game
 
+{-
+@api {get} {{base_url}}/game/:gameId/cards cards Game
+@apiName cards 
+@apiGroup Game
+@apiParam {String} gameId UUID of the Game
+@apiHeader {String} auth Users auth Token
+@apiDescription get the information about the cards on the discard pile and the cards of the other players (color, number, hints)
+-}
 getCards :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 getCards gameId = do
-  eGame <- getGameFromDB gameId >>= filterOwnUser
+  eGame <- getGameFromDB gameId >>= isGameAlreadyOver >>= filterOwnUser
   case eGame of
     (Left error) -> do
       setStatus badRequest400
@@ -213,10 +258,19 @@ getCards gameId = do
             object [ name .= cards | (name, cards) <- cardsToDisplay ]
       json $ sucessJson sucessCode cardsToDisplayJson
 
+{-
+@api {get} {{base_url}}/game/:gameId/ownCards ownCards Game
+@apiName ownCards 
+@apiGroup Game
+@apiParam {String} gameId UUID of the Game
+@apiHeader {String} auth Users auth Token
+@apiDescription get the information you are allowed to know about your own cards (hints)
+-}
 getOwnCards :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 getOwnCards gameId = do
   eCards <-
     getGameFromDB gameId
+    >>= isGameAlreadyOver
     >>= filterOtherUsers
     >>= findOwnCards
     >>= obfuscateCards
@@ -271,4 +325,9 @@ getGameFromDB gameId = do
     Nothing     -> return (Left ("No game found with Id: " ++ gameId))
     (Just game) -> return (Right game)
 
-
+isGameAlreadyOver :: Either String Game -> AppHandle (HVect xs) (Either String Game)
+isGameAlreadyOver (Left error) = return (Left error)
+isGameAlreadyOver (Right game) = 
+        if (state game) == Won || (state game) == Lost
+          then return (Left "Game already ended!")
+          else return (Right game)

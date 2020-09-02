@@ -366,6 +366,23 @@ removeLobby lobbyId = do
           else (return (Right lobby))
 
 
+{-
+@api {post} {{base_url}}/lobby/:lobbyId/settings game-settings Lobby
+@apiName settings 
+@apiGroup Lobby
+@apiParam {String} lobbyId UUID of the Lobby
+@apiHeader {String} auth Users auth Token
+@apiDescription update the settings of a lobby you are admin of
+@apiErrorExample {json} Sample Input
+{ 
+  "settings": {
+        "amtLives": 3,
+        "amtHints": 10,
+        "level": "Hard",
+        "isRainbow": False
+  }
+}
+-}
 adjustSettings :: (ListContains n User xs) => String -> AppHandle (HVect xs) ()
 adjustSettings lobbyId = do
   oldCtx <- getContext

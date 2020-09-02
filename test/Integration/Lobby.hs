@@ -117,6 +117,19 @@ createLobbyJSON public =
         ]
       )
 
+
+createSettingsJSON =
+  encode
+    $ (object
+        [
+          "settings" .= Settings {
+                          amtLives = 1,
+                          amtHints = 10,
+                          level = Easy,
+                          isRainbow = False
+          }
+        ])
+
 getLobbyFromResponse :: ByteString -> Either String Lobby
 getLobbyFromResponse bodyStr = parseBody
   bodyStr
@@ -455,6 +468,25 @@ lobbyTest = before_ flushDB $ do
                  [("auth", adminjwt)]
                  ""
         `shouldRespondWith` errorResponse 400 errorLaunch ("Game already started!" :: String)
+  describe "POST /lobby/:lobbyId/settings" $ do
+    it "successfully change the settings" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key lobbyId) = lid lobby
+      let newSettings = Settings {amtLives = 1,
+                          amtHints = 10,
+                          level = Easy,
+                          isRainbow = False}
+      (customPost (packChars ("/lobby/"++ lobbyId ++ "/settings")) [("auth", adminjwt)] 
+                  createSettingsJSON)
+          `shouldRespondWith` sucessResponse 200 sucessCode (lobby {gameSettings = newSettings })
+
+
 
 
 
