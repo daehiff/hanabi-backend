@@ -298,6 +298,48 @@ gameTest = before_ flushDB $ do
                                   400
                                   errorMove
                                   ("You cannot hint yourself!" :: String)
+    it "make rainbow hint" $ do
+      (game, userList) <- createGame defaultUsers False
+      let (admin, adminjwt) = userList !! 0
+      let (user1, user1jwt) = userList !! 1
+      let (Key user1Id)     = uid user1
+      let (Key gameId)      = gid game
+      customPost
+          (packChars ("/game/" ++ gameId ++ "/move"))
+          [("auth", adminjwt)]
+          (encode HintAction { targetPlayer = user1Id, hint = (Left Rainbow) })
+        `shouldRespondWith` errorResponse
+                                  400
+                                  errorMove
+                                  ("You cannot give Rainbow hints!" :: String)
+    it "number hint, too small" $ do
+      (game, userList) <- createGame defaultUsers False
+      let (admin, adminjwt) = userList !! 0
+      let (user1, user1jwt) = userList !! 1
+      let (Key user1Id)     = uid user1
+      let (Key gameId)      = gid game
+      customPost
+          (packChars ("/game/" ++ gameId ++ "/move"))
+          [("auth", adminjwt)]
+          (encode HintAction { targetPlayer = user1Id, hint = (Right 0) })
+        `shouldRespondWith` errorResponse
+                                  400
+                                  errorMove
+                                  ("You can only give number hints from 1-5!" :: String)
+    it "number hint, too big" $ do
+      (game, userList) <- createGame defaultUsers False
+      let (admin, adminjwt) = userList !! 0
+      let (user1, user1jwt) = userList !! 1
+      let (Key user1Id)     = uid user1
+      let (Key gameId)      = gid game
+      customPost
+          (packChars ("/game/" ++ gameId ++ "/move"))
+          [("auth", adminjwt)]
+          (encode HintAction { targetPlayer = user1Id, hint = (Right 10) })
+        `shouldRespondWith` errorResponse
+                                  400
+                                  errorMove
+                                  ("You can only give number hints from 1-5!" :: String)
     it "not your turn to play" $ do
       (game, userList) <- createGame defaultUsers False
       let (user1, user1jwt) = userList !! 1

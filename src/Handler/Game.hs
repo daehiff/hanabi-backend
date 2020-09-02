@@ -148,7 +148,7 @@ makeMove gameId = do
         (HintAction { targetPlayer = _targetPId, hint = eHint })
       )
       >>= doesPlayerHintHimself _uid
-      >>= isRainbowHint
+      >>= checkHint
   specificMoveCheck _uid (Right game) (Right PlayAction { cardId = _cardId }) =
     do
       mError <- canFindPlayer _uid game >>= cardInPlayersHand "playable" _cardId
@@ -175,12 +175,14 @@ makeMove gameId = do
           Nothing      -> return (Left "You are not part of the game!")
           Just _player -> return (Right _player)
 
-  isRainbowHint (Left error) = return (Left error)
-  isRainbowHint (Right HintAction { targetPlayer = _targetPId, hint = eHint })
+  checkHint (Left error) = return (Left error)
+  checkHint (Right HintAction { targetPlayer = _targetPId, hint = eHint })
     = do
       case eHint of
-        (Right number) ->
-          return (Right HintAction { targetPlayer = _targetPId, hint = eHint })
+        (Right number) -> do
+          if number < 1 || number > 5
+            then return (Left "You can only give number hints from 1-5!")
+            else return (Right HintAction { targetPlayer = _targetPId, hint = eHint })
         (Left color) -> do
           if color == Rainbow
             then return (Left "You cannot give Rainbow hints!")

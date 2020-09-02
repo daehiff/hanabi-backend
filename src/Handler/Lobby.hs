@@ -399,6 +399,7 @@ adjustSettings lobbyId = do
     findLobbyById lobbyId
     >>= checkIfGameAlreadyStarted
     >>= checkAuthentication userId
+    >>= checkSettings eSettings
     >>= updateSettings eSettings
   case eLobby of
     (Left error) -> do
@@ -417,6 +418,20 @@ adjustSettings lobbyId = do
     if (lobbyHost lobby) /= userId
       then return (Left "You are not authenticated to change settings!")
       else return (Right lobby)
+
+  checkSettings 
+    :: Either String Settings
+    -> Either String Lobby
+    -> AppHandle (HVect xs) (Either String Lobby)
+  checkSettings (Left error)      _            = return (Left error)
+  checkSettings _                (Left  error) = return (Left error)
+  checkSettings (Right settings) (Right lobby) = do
+    if (amtLives settings) < 1 || (amtLives settings) > 4
+      then return (Left "You can only play with 1-4 lives!")
+      else do
+        if (amtHints settings) < 2 || (amtHints settings) > 10
+        then return (Left "You can only play with 2-10 hints!")
+        else return (Right lobby)
 
   updateSettings
     :: Either String Settings

@@ -117,19 +117,6 @@ createLobbyJSON public =
         ]
       )
 
-
-createSettingsJSON =
-  encode
-    $ (object
-        [
-          "settings" .= Settings {
-                          amtLives = 1,
-                          amtHints = 10,
-                          level = Easy,
-                          isRainbow = False
-          }
-        ])
-
 getLobbyFromResponse :: ByteString -> Either String Lobby
 getLobbyFromResponse bodyStr = parseBody
   bodyStr
@@ -468,6 +455,7 @@ lobbyTest = before_ flushDB $ do
                  [("auth", adminjwt)]
                  ""
         `shouldRespondWith` errorResponse 400 errorLaunch ("Game already started!" :: String)
+
   describe "POST /lobby/:lobbyId/settings" $ do
     it "successfully change the settings" $ do
       let admin = defaultUsers !! 0
@@ -483,8 +471,95 @@ lobbyTest = before_ flushDB $ do
                           level = Easy,
                           isRainbow = False}
       (customPost (packChars ("/lobby/"++ lobbyId ++ "/settings")) [("auth", adminjwt)] 
-                  createSettingsJSON)
+                  (encode $ (object ["settings" .= newSettings])))
           `shouldRespondWith` sucessResponse 200 sucessCode (lobby {gameSettings = newSettings })
+
+    it "too few lives" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key lobbyId) = lid lobby
+      (customPost (packChars ("/lobby/"++ lobbyId ++ "/settings")) [("auth", adminjwt)] 
+                  (encode
+                     $ (object
+                        [
+                          "settings" .= Settings {
+                                          amtLives = 0,
+                                          amtHints = 10,
+                                          level = Easy,
+                                          isRainbow = False
+                          }
+                        ])))
+          `shouldRespondWith` errorResponse 400 errorAdjustSettings ("You can only play with 1-4 lives!" :: String)
+    
+    it "too many lives" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key lobbyId) = lid lobby
+      (customPost (packChars ("/lobby/"++ lobbyId ++ "/settings")) [("auth", adminjwt)] 
+                  (encode
+                     $ (object
+                        [
+                          "settings" .= Settings {
+                                          amtLives = 5,
+                                          amtHints = 10,
+                                          level = Easy,
+                                          isRainbow = False
+                          }
+                        ])))
+          `shouldRespondWith` errorResponse 400 errorAdjustSettings ("You can only play with 1-4 lives!" :: String)
+
+    it "too few hints" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key lobbyId) = lid lobby
+      (customPost (packChars ("/lobby/"++ lobbyId ++ "/settings")) [("auth", adminjwt)] 
+                  (encode
+                     $ (object
+                        [
+                          "settings" .= Settings {
+                                          amtLives = 3,
+                                          amtHints = 1,
+                                          level = Hard,
+                                          isRainbow = True
+                          }
+                        ])))
+          `shouldRespondWith` errorResponse 400 errorAdjustSettings ("You can only play with 2-10 hints!" :: String)
+    it "too many hints" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key lobbyId) = lid lobby
+      (customPost (packChars ("/lobby/"++ lobbyId ++ "/settings")) [("auth", adminjwt)] 
+                  (encode
+                     $ (object
+                        [
+                          "settings" .= Settings {
+                                          amtLives = 3,
+                                          amtHints = 11,
+                                          level = Hard,
+                                          isRainbow = True
+                          }
+                        ])))
+          `shouldRespondWith` errorResponse 400 errorAdjustSettings ("You can only play with 2-10 hints!" :: String)
 
 
 
