@@ -112,7 +112,7 @@ giveHint hint id game = do
   updateCard :: (Either Color Int) -> Card -> Card
   updateCard (Left hcolor) card =
     if (color card) == hcolor || (color card) == Rainbow
-      then card { hintColor = [hcolor] }
+      then card { hintColor = hcolor:(hintColor card) }
       else card
   updateCard (Right hnumber) card = if (number card) == hnumber
     then card { hintNumber = Just hnumber }
