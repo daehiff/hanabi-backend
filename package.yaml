@@ -44,6 +44,9 @@ dependencies:
   - resource-pool
   - transformers
   - hslogger
+  - random-shuffle
+  - array
+  - split
 
 library:
   source-dirs:

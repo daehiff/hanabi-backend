@@ -28,7 +28,9 @@ import           Data.Aeson.Types        hiding ( String
                                                 , Key
                                                 )
 import           Integration.Utils              ( errorResponse
-                                                , sucessResponse
+                                                , sucessResponse,
+                                                customGet,
+                                                customPost
                                                 )
 import           Responses
 
@@ -46,35 +48,42 @@ defaultUsers =
          , email         = "samplemail@mail.com"
          , password_hash = Just "supersaveandsecure"
          , sessions      = []
-         , pwsalt = ""
+         , pwsalt        = ""
          }
   , User { uid           = NewKey
          , username      = "annika"
          , email         = "samplemail1@mail.com"
          , password_hash = Just "supersaveandsecure"
          , sessions      = []
-         , pwsalt = ""
+         , pwsalt        = ""
          }
   , User { uid           = NewKey
          , username      = "davidH."
          , email         = "samplemail2@mail.com"
          , password_hash = Just "supersaveandsecure"
          , sessions      = []
-         , pwsalt = ""
+         , pwsalt        = ""
          }
   , User { uid           = NewKey
          , username      = "patsch"
          , email         = "samplemail3@mail.com"
          , password_hash = Just "supersaveandsecure"
          , sessions      = []
-         , pwsalt = ""
+         , pwsalt        = ""
          }
   , User { uid           = NewKey
          , username      = "leonBaum"
          , email         = "samplemail4@mail.com"
          , password_hash = Just "supersaveandsecure"
          , sessions      = []
-         , pwsalt = ""
+         , pwsalt        = ""
+         }
+  , User { uid           = NewKey
+         , username      = "fritzie"
+         , email         = "samplemail5@mail.com"
+         , password_hash = Just "supersaveandsecure"
+         , sessions      = []
+         , pwsalt        = ""
          }
   ]
 
@@ -83,7 +92,7 @@ setupUser user = do
   let (Right respUser) = parseBody
         (simpleBody request)
         (\obj -> do
-          sucess <- (obj .: "sucess") :: Parser Object
+          sucess <- (obj .: "success") :: Parser Object
           user   <- (sucess .: "message") :: Parser User
           return user
         )
@@ -96,13 +105,23 @@ loginUser user = do
   return (user, jwt)
 
 createLobbyJSON :: Bool -> ByteString
-createLobbyJSON public = encode $ (object ["public" .= public])
+createLobbyJSON public =
+  encode
+    $ (object
+        [ "public" .= public
+        , "settings" .= Settings { amtLives  = 3
+                                 , amtHints  = 8
+                                 , level     = Hard
+                                 , isRainbow = True
+                                 }
+        ]
+      )
 
 getLobbyFromResponse :: ByteString -> Either String Lobby
 getLobbyFromResponse bodyStr = parseBody
   bodyStr
   (\obj -> do
-    sucess <- (obj .: "sucess") :: Parser Object
+    sucess <- (obj .: "success") :: Parser Object
     lobby  <- (sucess .: "message") :: Parser Lobby
     return lobby
   )
@@ -136,7 +155,7 @@ lobbyTest = before_ flushDB $ do
         (customPost "/lobby/create" [("auth", jwt)] (createLobbyJSON True))
       let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
       (customGet "/lobby/find" [("auth", jwt)] "")
-        `shouldRespondWith` sucessResponse 200 sucessCode ([lobby] :: [Lobby])
+        `shouldRespondWith` sucessResponse 200 sucessCode ([] :: [Lobby])
     it "hides private lobbys" $ do
       let admin = defaultUsers !! 0
       (admin, jwt) <- setupUser admin
@@ -177,8 +196,7 @@ lobbyTest = before_ flushDB $ do
         `shouldRespondWith` errorResponse
                               400
                               errorJoinLobby
-                              ("Could not find Lobby with salt: stupid-salt" :: String
-                              )
+                              ("Could not find Lobby with salt: stupid-salt" :: String)
   describe "POST /lobby/:lobbyId/leave" $ do
     it "allows joined users to leave" $ do
       let admin = defaultUsers !! 0
@@ -225,8 +243,7 @@ lobbyTest = before_ flushDB $ do
         `shouldRespondWith` errorResponse
                               400
                               errorJoinLobby
-                              ("You did not join this lobby or you already left." :: String
-                              )
+                              ("You did not join this lobby or you already left." :: String)
   describe "POST /lobby/:lobbyId/kick/:userId" $ do
     it "kicks player and does not allow him to join" $ do
       let admin = defaultUsers !! 0
@@ -247,11 +264,14 @@ lobbyTest = before_ flushDB $ do
                  ""
         `shouldRespondWith` sucessResponse 200 sucessCode (lobbyK :: Lobby)
       customPost (packChars ("/lobby/join/" ++ salt lobby))
-            [("auth", user1jwt)]
-            ""
-        `shouldRespondWith` errorResponse 400 errorJoinLobby ("You have been kicked from this lobby" :: String)
-  describe "GET /lobby/:lobbyId/status" $ do 
-    it "descibes the status of the current Lobby" $ do 
+                 [("auth", user1jwt)]
+                 ""
+        `shouldRespondWith` errorResponse
+                              400
+                              errorJoinLobby
+                              ("You have been kicked from this lobby" :: String)
+  describe "GET /lobby/:lobbyId/status" $ do
+    it "descibes the status of the current Lobby" $ do
       let admin = defaultUsers !! 0
       (admin, adminjwt) <- setupUser admin
       requestCL         <-
@@ -259,10 +279,289 @@ lobbyTest = before_ flushDB $ do
       let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
       let (Key lobbyId) = lid lobby
       customGet (packChars ("/lobby/" ++ lobbyId ++ "/status"))
+                [("auth", adminjwt)]
+                ""
+        `shouldRespondWith` sucessResponse 200 sucessCode (lobby :: Lobby)
+
+  describe "POST /lobby/:lobbyId/launch" $ do
+    it "allows admin to launch the game" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key lobbyId) = lid lobby
+      customPost (packChars ("/lobby/join/" ++ salt lobby))
+                 [("auth", user1jwt)]
+                 ""
+      customPost (packChars ("/lobby/" ++ lobbyId ++ "/launch"))
                  [("auth", adminjwt)]
                  ""
-        `shouldRespondWith` sucessResponse 200 sucessCode (lobby :: Lobby) 
-customPost = request methodPost
-customGet = request methodGet
+        `shouldRespondWith` 200
+    it "someone who is not the host of the lobby tries to launch the game" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key _id)     = uid user1
+      let (Key lobbyId) = lid lobby
+      customPost (packChars ("/lobby/join/" ++ salt lobby))
+                 [("auth", user1jwt)]
+                 ""
+      customPost (packChars ("/lobby/" ++ lobbyId ++ "/launch"))
+                 [("auth", user1jwt)]
+                 ""
+        `shouldRespondWith` errorResponse 400
+                                          errorLaunch
+                                          ("You are not the Host of this lobby" :: String)
+    it "too few players" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key lobbyId) = lid lobby
+      customPost (packChars ("/lobby/" ++ lobbyId ++ "/launch"))
+                 [("auth", adminjwt)]
+                 ""
+        `shouldRespondWith` errorResponse 400
+                                          errorLaunch
+                                          ("To few player in the Lobby." :: String)
+    it "too many players" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      let user2 = defaultUsers !! 2
+      (user2, user2jwt) <- setupUser user2
+      let user3 = defaultUsers !! 3
+      (user3, user3jwt) <- setupUser user3
+      let user4 = defaultUsers !! 4
+      (user4, user4jwt) <- setupUser user4
+      let user5 = defaultUsers !! 5
+      (user5, user5jwt) <- setupUser user5
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key lobbyId) = lid lobby
+      customPost (packChars ("/lobby/join/" ++ salt lobby))
+                [("auth", user1jwt)]
+                ""
+      customPost (packChars ("/lobby/join/" ++ salt lobby))
+                [("auth", user2jwt)]
+                ""
+      customPost (packChars ("/lobby/join/" ++ salt lobby))
+                [("auth", user3jwt)]
+                ""
+      customPost (packChars ("/lobby/join/" ++ salt lobby))
+                [("auth", user4jwt)]
+                ""
+      customPost (packChars ("/lobby/join/" ++ salt lobby))
+                [("auth", user5jwt)]
+                ""
+      customPost (packChars ("/lobby/" ++ lobbyId ++ "/launch"))
+                [("auth", adminjwt)]
+                ""
+        `shouldRespondWith` errorResponse 400
+                                          errorLaunch
+                                          ("To many players in the Lobby." :: String)
+    it "someone tries to join the lobby, after the game was launched" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      let user2 = defaultUsers !! 2
+      (user2, user2jwt) <- setupUser user2
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key lobbyId) = lid lobby
+      customPost (packChars ("/lobby/join/" ++ salt lobby))
+                [("auth", user1jwt)]
+                ""
+      customPost (packChars ("/lobby/" ++ lobbyId ++ "/launch"))
+                [("auth", adminjwt)]
+                ""
+      customPost (packChars ("/lobby/join/" ++ salt lobby))
+                [("auth", user2jwt)]
+                ""
+        `shouldRespondWith` errorResponse 400
+                                          errorJoinLobby
+                                          ("Game already started!" :: String)
+    it "someone tries to leave the lobby, after the game was launched" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key lobbyId) = lid lobby
+      customPost (packChars ("/lobby/join/" ++ salt lobby))
+                [("auth", user1jwt)]
+                ""
+      customPost (packChars ("/lobby/" ++ lobbyId ++ "/launch"))
+                [("auth", adminjwt)]
+                ""
+      customPost (packChars ("/lobby/" ++ lobbyId ++ "/leave"))
+                [("auth", user1jwt)]
+                ""
+        `shouldRespondWith` errorResponse 400
+                                          errorJoinLobby
+                                          ("Game already started!" :: String)
+    it "admin tries to kick a player, after game was launched" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key _id)     = uid user1
+      let (Key lobbyId) = lid lobby
+      customPost (packChars ("/lobby/join/" ++ salt lobby))
+                [("auth", user1jwt)]
+                ""
+      customPost (packChars ("/lobby/" ++ lobbyId ++ "/launch"))
+                [("auth", adminjwt)]
+                ""
+      customPost (packChars ("/lobby/" ++ lobbyId ++ "/kick/" ++ _id))
+                 [("auth", adminjwt)]
+                 ""
+        `shouldRespondWith` errorResponse 400
+                                          errorKickPlayer
+                                          ("Game already started!" :: String)
+    it "tries to launch game twice" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key lobbyId) = lid lobby
+      customPost (packChars ("/lobby/join/" ++ salt lobby))
+                 [("auth", user1jwt)]
+                 ""
+      customPost (packChars ("/lobby/" ++ lobbyId ++ "/launch"))
+                 [("auth", adminjwt)]
+                 ""
+      customPost (packChars ("/lobby/" ++ lobbyId ++ "/launch"))
+                 [("auth", adminjwt)]
+                 ""
+        `shouldRespondWith` errorResponse 400 errorLaunch ("Game already started!" :: String)
+
+  describe "POST /lobby/:lobbyId/settings" $ do
+    it "successfully change the settings" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key lobbyId) = lid lobby
+      let newSettings = Settings {amtLives = 1,
+                          amtHints = 10,
+                          level = Easy,
+                          isRainbow = False}
+      (customPost (packChars ("/lobby/"++ lobbyId ++ "/settings")) [("auth", adminjwt)] 
+                  (encode $ (object ["settings" .= newSettings])))
+          `shouldRespondWith` sucessResponse 200 sucessCode (lobby {gameSettings = newSettings })
+
+    it "too few lives" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key lobbyId) = lid lobby
+      (customPost (packChars ("/lobby/"++ lobbyId ++ "/settings")) [("auth", adminjwt)] 
+                  (encode
+                     $ (object
+                        [
+                          "settings" .= Settings {
+                                          amtLives = 0,
+                                          amtHints = 10,
+                                          level = Easy,
+                                          isRainbow = False
+                          }
+                        ])))
+          `shouldRespondWith` errorResponse 400 errorAdjustSettings ("You can only play with 1-4 lives!" :: String)
+    
+    it "too many lives" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key lobbyId) = lid lobby
+      (customPost (packChars ("/lobby/"++ lobbyId ++ "/settings")) [("auth", adminjwt)] 
+                  (encode
+                     $ (object
+                        [
+                          "settings" .= Settings {
+                                          amtLives = 5,
+                                          amtHints = 10,
+                                          level = Easy,
+                                          isRainbow = False
+                          }
+                        ])))
+          `shouldRespondWith` errorResponse 400 errorAdjustSettings ("You can only play with 1-4 lives!" :: String)
+
+    it "too few hints" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key lobbyId) = lid lobby
+      (customPost (packChars ("/lobby/"++ lobbyId ++ "/settings")) [("auth", adminjwt)] 
+                  (encode
+                     $ (object
+                        [
+                          "settings" .= Settings {
+                                          amtLives = 3,
+                                          amtHints = 1,
+                                          level = Hard,
+                                          isRainbow = True
+                          }
+                        ])))
+          `shouldRespondWith` errorResponse 400 errorAdjustSettings ("You can only play with 2-10 hints!" :: String)
+    it "too many hints" $ do
+      let admin = defaultUsers !! 0
+      (admin, adminjwt) <- setupUser admin
+      let user1 = defaultUsers !! 1
+      (user1, user1jwt) <- setupUser user1
+      requestCL         <-
+        (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
+      let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
+      let (Key lobbyId) = lid lobby
+      (customPost (packChars ("/lobby/"++ lobbyId ++ "/settings")) [("auth", adminjwt)] 
+                  (encode
+                     $ (object
+                        [
+                          "settings" .= Settings {
+                                          amtLives = 3,
+                                          amtHints = 11,
+                                          level = Hard,
+                                          isRainbow = True
+                          }
+                        ])))
+          `shouldRespondWith` errorResponse 400 errorAdjustSettings ("You can only play with 2-10 hints!" :: String)
+
+
+
 
 

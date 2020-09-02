@@ -35,9 +35,11 @@ import           Hooks                          ( initHook
                                                 )
 import           Handler.Auth                   ( loginHandle
                                                 , registerHandle
+                                                , getUser
                                                 )
 
-import           Handler.Lobby                  
+import           Handler.Lobby
+import           Handler.Game
 import           Control.Monad.Trans.Reader     ( ReaderT
                                                 , ask
                                                 )
@@ -45,8 +47,11 @@ import           Data.Pool                      ( withResource )
 import           System.Environment             ( getEnv
                                                 , lookupEnv
                                                 )
-import Responses
+import           Responses
+import           Network.HTTP.Types             ( status204 )
 
+-----
+import           Model.BSONExtention            ( ObjectKey(..) )
 
 createConfig :: IO AppConfig
 createConfig = do
@@ -63,7 +68,7 @@ createConfig = do
                       , dbName     = dbName
                       }
   port <- read <$> getEnv "PORT"
-  return AppConfig { dbConf = dbConf, port = port, jwtSecret="test" }
+  return AppConfig { dbConf = dbConf, port = port, jwtSecret = "test" }
 
 
 runApp :: IO ()
@@ -75,8 +80,20 @@ runApp = do
   runSpock (port config) (spock spockCfg app)
 
 
+corsHeader :: AppHandle () ()
+corsHeader =
+  do ctx <- getContext
+     setHeader "Access-Control-Allow-Origin" "*"
+     setHeader "Access-Control-Allow-Methods" "POST, GET, OPTIONS, DELETE"
+     setHeader "Access-Control-Allow-Headers" "Content-Type, auth"
+     setHeader "Access-Control-Max-Age" "86400"
+     setStatus status204
+     pure ctx
+
+
 app :: App ()
 app = do
+  hookAny OPTIONS (\path -> corsHeader)
   prehook initHook $ do
     middleware (staticPolicy (addBase "./static/doc"))
     get root $ do
@@ -86,6 +103,8 @@ app = do
     post "/auth/login" $ loginHandle
     post "/auth/register" $ registerHandle
     prehook authHook $ prehook updateJWTHook $ do
+      -- User Status
+      get "user/status" $ getUser
       -- Lobby Routes
       post "/lobby/create" $ createLobby
       get ("/lobby/find") findLobbys
@@ -94,7 +113,15 @@ app = do
       post ("/lobby" <//> var <//> "kick" <//> var) $ kickPlayer
       get ("/lobby" <//> var <//> "status") $ getStatus
       post ("/lobby" <//> var <//> "launch") $ launchGame
-
+      post ("/lobby" <//> var <//> "settings") $ adjustSettings
+      post ("/lobby" <//> var <//> "remove") $ removeLobby
+      -- Game Routes
+      get ("game" <//> var <//> "status") $ getGameStatus
+      post ("game" <//> var <//> "move") $ makeMove
+      get("game"<//> var <//> "cards") $ getCards
+      get ("game" <//> var <//> "ownCards") $ getOwnCards
+      -- User Route
+      get ("user" <//> var) $ getUserHandle
 
 
 

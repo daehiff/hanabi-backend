@@ -3,7 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
-
+-- TODO (DuplicateRecordFields)
 module Model where
 
 import           Data.Aeson                     ( ToJSON(..)
@@ -11,41 +11,26 @@ import           Data.Aeson                     ( ToJSON(..)
                                                 , decode
                                                 , encode
                                                 )
-import           Data.Aeson.Types        hiding ( String ,Key)
-import           Database.MongoDB hiding (Key)
+import           Data.Aeson.Types        hiding ( String
+                                                , Key
+                                                )
+import           Database.MongoDB        hiding ( Key )
 import           GHC.Generics
 import qualified Data.Text                     as T
 import           System.Environment             ( getEnv )
 
 
-import           Model.Utils                     ( MongoObject(..), ObjectKey(..), FromBSON(..), ToBSON(..))
+import           Model.Utils                    ( MongoObject(..)
+                                                , ObjectKey(..)
+                                                , FromBSON(..)
+                                                , ToBSON(..)
+                                                )
 import           Data.Time.Clock
 data Color = Red | Blue | White | Yellow | Green | Rainbow
             deriving(Generic, Show, Eq , ToJSON, FromJSON, ToBSON, FromBSON)
 
-map_color_string :: Color -> String
-map_color_string Red     = "Red"
-map_color_string Blue    = "Blue"
-map_color_string White   = "White"
-map_color_string Yellow  = "Yellow"
-map_color_string Green   = "Green"
-map_color_string Rainbow = "Rainbow"
 
-map_string_color ("Red"    ) = Just Red
-map_string_color ("Blue"   ) = Just Blue
-map_string_color ("White"  ) = Just White
-map_string_color ("Yellow" ) = Just Yellow
-map_string_color ("Green"  ) = Just Green
-map_string_color ("Rainbow") = Just Rainbow
-map_string_color _           = Nothing
-
-
-instance Val Color where
-  val color = val (map_color_string color)
-  cast' (String color) = map_string_color color
-  cast' _              = Nothing
-
-data Card = Card {cid::ObjectKey , color::Color, number::Int}
+data Card = Card {cid::ObjectKey , color::Color, number::Int, hintColor::[Color], hintNumber:: Maybe Int}
 
               deriving(Generic, Show, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
 
@@ -78,7 +63,7 @@ instance FromJSON User where
                 , email         = email
                 , password_hash = Nothing
                 , sessions      = sessions
-                , pwsalt = ""
+                , pwsalt        = ""
                 }
 
 
@@ -106,11 +91,77 @@ data Lobby = Lobby {lid:: ObjectKey,
                     gameId::Maybe String,
                     salt::String,
                     public::Bool,
-                    launched::Bool}
+                    launched::Bool,
+                    gameSettings :: Settings}
                     deriving (Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
-
+                    
 instance MongoObject Lobby where
   collection _ = "lobbys"
 
-  insertId id session = session { lid = Key (show id) }
+  insertId id lobby = lobby { lid = Key (show id) }
+
+data Settings = Settings {amtLives:: Int,
+                          amtHints:: Int,
+                          level:: Level,
+                          isRainbow:: Bool}
+                    deriving (Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
+
+data Level = Beginner | Easy | Middle | Hard
+              deriving (Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
+
+
+data State = Running | LastRound | Lost | Won
+              deriving (Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
+
+data Game = Game {gid:: ObjectKey,
+                  currentPlayer:: String,
+                  players:: [Player],
+                  hints:: Int,
+                  lives:: Int,
+                  drawPile:: [String],
+                  discardPile:: [String],
+                  piles::[(Color, Int)],
+                  state:: State,
+                  points:: Int,
+                  maxPoints:: Int,
+                  lastPlayerToMove:: Maybe String,
+                  settings:: Settings
+                  }
+                  deriving(Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
+
+instance MongoObject Game where
+  collection _ = "games"
+
+  insertId id game = game { gid = Key (show id) }
+
+data Player = Player {playerId:: String,
+                      name:: String,
+                      cards:: [String],
+                      explicitHints:: [(Either Color Int, String)]}
+                      --implicitHints:: [(String, String)]}
+                      deriving(Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
+
+data Hint = Hint {hid:: ObjectKey,
+                  red:: Maybe Bool,
+                  blue:: Maybe Bool,
+                  green:: Maybe Bool,
+                  yellow:: Maybe Bool,
+                  white:: Maybe Bool,
+                  rainbow:: Maybe Bool,
+                  one:: Maybe Bool,
+                  two:: Maybe Bool,
+                  three:: Maybe Bool,
+                  four:: Maybe Bool,
+                  five:: Maybe Bool}
+                  deriving(Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
+
+instance MongoObject Hint where
+  collection _ = "hints"
+
+  insertId id hint = hint { hid = Key (show id) }
+
+data MoveAction = HintAction {targetPlayer::String, hint::Either Color Int}
+                  | PlayAction {cardId::String}
+                  | DiscardAction { cardId:: String}
+                  deriving (FromJSON, ToJSON, Show, Generic, Eq)
 

@@ -69,7 +69,10 @@ _getNow = (round . (* 1000)) <$> getPOSIXTime
 Base Hook returns HNil for initalisation
 -}
 initHook :: ActionCtxT () (WebStateM Pipe () AppConfig) (HVect '[])
-initHook = return HNil
+initHook = do
+  setHeader "Access-Control-Allow-Origin" "*"
+  setHeader "Access-Control-Expose-Headers" "auth"
+  return HNil
 
 
 

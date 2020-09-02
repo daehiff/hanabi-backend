@@ -4,6 +4,8 @@ module Integration.Utils
   ( errorResponse
   , sucessResponse
   , unwrapJWT
+  , customGet
+  , customPost
   )
 where
 import           Test.Hspec
@@ -14,6 +16,9 @@ import           Data.Aeson                     ( decode
                                                 , encode
                                                 )
 import           Data.Aeson.Types               ( ToJSON )
+import           Network.HTTP.Types.Method      ( methodPost
+                                                , methodGet
+                                                )
 
 import           Network.HTTP.Types.Header
 import           Responses
@@ -81,3 +86,5 @@ unwrapJWT :: Maybe BIB.ByteString -> BIB.ByteString
 unwrapJWT Nothing    = ""
 unwrapJWT (Just jwt) = jwt
 
+customPost = request methodPost
+customGet = request methodGet

@@ -20,6 +20,7 @@ import           Responses
 ----------------------------------------------------------------
 import           Integration.Auth               ( authTest )
 import           Integration.Lobby              ( lobbyTest )
+import Integration.Game (gameTest)
 
 beforeAll = do
   flushDB
@@ -42,4 +43,5 @@ spec :: Spec
 spec = with (spockAsApp testApp) $ do
   authTest
   lobbyTest
+  gameTest
 

@@ -36,11 +36,11 @@ errorJson code message = object
 sucessJson :: ToJSON a => Int -> a -> Value
 sucessJson code message = object
   [ "error" .= object []
-  , "sucess" .= object ["code" .= code, "message" .= message]
+  , "success" .= object ["code" .= code, "message" .= message]
   ]
 
 
-{-Below the error sucess codes are defined-}
+{-Below the error success codes are defined-}
 
 sucessCode :: Int
 sucessCode = 0
@@ -68,3 +68,24 @@ errorKickPlayer = 7
 
 errorLaunch :: Int
 errorLaunch = 8
+
+errorAdjustSettings :: Int
+errorAdjustSettings = 9
+
+errorRemoveLobby :: Int
+errorRemoveLobby = 10
+
+userNotFoundError :: Int
+userNotFoundError = 11
+
+gameNotFoundError :: Int
+gameNotFoundError = 12
+
+errorMove :: Int
+errorMove = 13
+
+errorGameStatus :: Int
+errorGameStatus = 14
+
+gameOrPlayerNotFoundError :: Int
+gameOrPlayerNotFoundError = 15
