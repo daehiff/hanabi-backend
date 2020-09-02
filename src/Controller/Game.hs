@@ -119,7 +119,8 @@ giveHint hint id game = do
     else card
 
 
-playCard :: String -> String -> Game -> AppHandle (HVect xs) (Either String Game)
+playCard
+  :: String -> String -> Game -> AppHandle (HVect xs) (Either String Game)
 playCard _pid _cid game = do
   ((mCardToPlay) :: Maybe Card) <- findById _cid
   let (Just cardToPlay) = mCardToPlay
@@ -166,11 +167,15 @@ playCard _pid _cid game = do
     let _adjGame =
           adjGame { players = updatePlayer (players adjGame) newPlayer }
     if shouldStartLastRound _adjGame
-      then return (Right (setNextPlayer
-        (_adjGame { state            = LastRound
-                  , lastPlayerToMove = Just (currentPlayer _adjGame)
-                  }
-        )))
+      then return
+        (Right
+          (setNextPlayer
+            (_adjGame { state            = LastRound
+                      , lastPlayerToMove = Just (currentPlayer _adjGame)
+                      }
+            )
+          )
+        )
       else return (Right (setNextPlayer _adjGame))
 
 discardCard
@@ -220,7 +225,7 @@ discardCard _pid _cid game = do
             , card              <- playableCards
             ]
     in  not $ any (\((c1, n1), (c2, n2)) -> c1 == c2 && n1 == n2)
-            playableCardsXPossibleCards
+                  playableCardsXPossibleCards
 
 
 setNextPlayer :: Game -> Game
@@ -250,10 +255,12 @@ removeCardFromPlayer player _cid =
   player { cards = [ card | card <- (cards player), card /= _cid ] }
 
 drawNewCard :: Game -> Player -> (Player, Game)
-drawNewCard game player =
-  ( player { cards = ((drawPile game) !! 0) : (cards player) }
-  , game { drawPile = drop 1 (drawPile game) }
-  )
+drawNewCard game player = if (length (drawPile game) == 0)
+  then (player, game )
+  else
+    ( player { cards = ((drawPile game) !! 0) : (cards player) }
+    , game { drawPile = drop 1 (drawPile game) }
+    )
 
 shouldStartLastRound :: Game -> Bool
 shouldStartLastRound game =
