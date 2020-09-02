@@ -112,11 +112,17 @@ giveHint hint id game = do
   updateCard :: (Either Color Int) -> Card -> Card
   updateCard (Left hcolor) card =
     if (color card) == hcolor || (color card) == Rainbow
-      then card { hintColor = hcolor:(hintColor card) }
+      then card { hintColor = removeDuplicates (hcolor:(hintColor card)) }
       else card
   updateCard (Right hnumber) card = if (number card) == hnumber
     then card { hintNumber = Just hnumber }
     else card
+  removeDuplicates :: Eq a => [a] -> [a]
+  removeDuplicates = rdHelper []
+    where rdHelper seen [] = seen
+          rdHelper seen (x:xs)
+              | x `elem` seen = rdHelper seen xs
+              | otherwise = rdHelper (seen ++ [x]) xs
 
 
 playCard
@@ -153,7 +159,9 @@ playCard _pid _cid game = do
             else (_color, _number)
           )
           (piles game)
-    return game { piles = newPiles, points = points game + 1 }
+    if (number card) == 5
+      then return game { piles = newPiles, points = points game + 1, hints = min (amtHints (settings game)) ((hints game)+1)}
+      else return game { piles = newPiles, points = points game + 1 }
 
   didWin :: Game -> Bool
   didWin game = (points game) == (maxPoints game)
