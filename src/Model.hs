@@ -92,7 +92,7 @@ data Lobby = Lobby {lid:: ObjectKey,
                     salt::String,
                     public::Bool,
                     launched::Bool,
-                    lobbyChatID:: String}
+                    lobbyChatID:: String,
                     gameSettings :: Settings}
                     deriving (Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
                     
