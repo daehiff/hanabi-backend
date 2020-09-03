@@ -511,15 +511,10 @@ launchGame lobbyId = do
     :: Either String Lobby -> AppHandle (HVect xs) (Either String Lobby)
   updateLobby (Left  error) = return (Left error)
   updateLobby (Right lobby) = do
-    let settings = Settings { amtLives  = 3
-                            , amtHints  = 8
-                            , level     = Hard
-                            , isRainbow = True
-                            }
     (userObjects :: [Maybe User]) <- forM
       ((lobbyHost lobby) : (player lobby))
       findById
-    game <- createGame [ user | (Just user) <- userObjects ] settings
+    game <- createGame [ user | (Just user) <- userObjects ] (gameSettings lobby)
     let (Key _gid) = gid game
     let newLobby = lobby { launched = True, gameId = Just _gid }
     updateObject newLobby
