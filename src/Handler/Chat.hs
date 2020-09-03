@@ -147,24 +147,3 @@ getChatStatus chatId = do
   case eChat of
     (Left  error) -> json $ errorJson errorChat error
     (Right chat) -> json $ sucessJson sucessCode chat
-
-
-{--
-chat :: IO ()
-chat $ do 
-    _ <- printf "Start Chat and listening on port 8080\n"
-    port <- findPort
-    chan <- NewTChanIO
-    bracket (listenOn PortNumber port)) () ()
-    return ()
-
-findPort :: IO PortNumber
-findPort = do 
-    chatport <- lookupEnv "CHAT_SERVER_PORT"
-    let port = 
-        case chatport of
-            Nothing -> 8080
-            Just str -> fromnIntegral (read str :: Int)
-    return port
-
---}
