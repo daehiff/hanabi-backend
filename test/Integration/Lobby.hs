@@ -131,7 +131,7 @@ lobbyTest = before_ flushDB $ do
   describe "POST /lobby/create" $ do
     it "can create a new public lobby" $ do -- TODO check lobbys/find and private creation
       let admin = defaultUsers !! 0
-      (admin, jwt) <- setupUser admin
+      (admin, jwt) <- setupUser admin 
       (customPost "/lobby/create" [("auth", jwt)] (createLobbyJSON True))
         `shouldRespondWith` 200
     it "can create a new private lobby" $ do

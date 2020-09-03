@@ -136,7 +136,11 @@ playCard _pid _cid game = do
   if doesPlayedCardFit game cardToPlay
     then do
       adjGame <- playedValidCard game cardToPlay
-      if didWin adjGame
+      let handCards = concat [ cards player | player <- players adjGame ]
+      let playableCardIDs = (drawPile adjGame) ++ handCards
+      (mPlayableCards :: [Maybe Card]) <- forM playableCardIDs findById
+      let playableCards = [ card | (Just card) <- mPlayableCards ]
+      if didWin adjGame || isGameOver adjGame playableCards
         then return (Right (adjGame { state = Won }))
         else continueGame adjGame newPlayer
     else do
@@ -224,16 +228,16 @@ discardCard _pid _cid game = do
                 )
               )
             else return (Right (setNextPlayer newGame))
- where
-  isGameOver :: Game -> [Card] -> Bool
-  isGameOver game playableCards =
-    let playableCardsXPossibleCards =
-            [ ((color card, number card), (_color, _number + 1))
-            | (_color, _number) <- piles game
-            , card              <- playableCards
-            ]
-    in  not $ any (\((c1, n1), (c2, n2)) -> c1 == c2 && n1 == n2)
-                  playableCardsXPossibleCards
+
+isGameOver :: Game -> [Card] -> Bool
+isGameOver game playableCards =
+  let playableCardsXPossibleCards =
+          [ ((color card, number card), (_color, _number + 1))
+          | (_color, _number) <- piles game
+          , card              <- playableCards
+          ]
+  in  not $ any (\((c1, n1), (c2, n2)) -> c1 == c2 && n1 == n2)
+                playableCardsXPossibleCards
 
 
 setNextPlayer :: Game -> Game
