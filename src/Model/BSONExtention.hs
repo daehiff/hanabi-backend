@@ -60,7 +60,6 @@ keyLabel :: Label
 keyLabel = T.pack "_id"
 
 
-
 instance {-# OVERLAPPABLE #-} (FromBSON a, ToBSON a, Typeable a, Show a, Eq a) => Val a where
   val x = Doc $ toBSON x
   cast' (Doc x) = fromBSON x
@@ -74,6 +73,7 @@ class ToBSON a where
 
 class GToBSON f where
     genericToBSON :: f a -> Document
+
 
 instance GToBSON U1 where
   genericToBSON U1 = []

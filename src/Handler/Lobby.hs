@@ -24,7 +24,12 @@ import           Data.HVect              hiding ( length
                                                 , (!!)
                                                 )
 import           Data.Time.Clock
-import           Model
+import           Model                          ( User(..)
+                                                , Lobby(..)
+                                                , Chat(..)
+                                                , Settings(..),
+                                                Game(..)
+                                                )
 import           Model.Utils
 import           Control.Monad.Trans
 import           Controller.Lobby               ( findLobbyById
@@ -102,10 +107,12 @@ createLobby = do
       json $ errorJson errorCreateLobby error
     (Right (public, lSettings)) -> do
       lobbys <- findAvailableLobbys Nothing True
-      let salts        = [ salt lobby | lobby <- lobbys ]
+      let salts = [ salt lobby | lobby <- lobbys ]
 
-      let host :: User = (findFirst oldCtx)
-      let (Key _id)    = uid host
+      chat <- insertObject Chat { chatID = NewKey, messages = [] }
+      let (Key _chatID) = chatID chat
+      let host :: User  = (findFirst oldCtx)
+      let (Key _id)     = uid host
       now  <- liftIO getCurretISOTime
       salt <- liftIO $ generateSalt salts
       let launched = False
@@ -118,6 +125,7 @@ createLobby = do
                          , salt         = salt
                          , public       = public
                          , launched     = launched
+                         , lobbyChatID  = _chatID
                          , gameSettings = lSettings
                          }
       lobby <- insertObject lobbyC
@@ -419,19 +427,19 @@ adjustSettings lobbyId = do
       then return (Left "You are not authenticated to change settings!")
       else return (Right lobby)
 
-  checkSettings 
+  checkSettings
     :: Either String Settings
     -> Either String Lobby
     -> AppHandle (HVect xs) (Either String Lobby)
-  checkSettings (Left error)      _            = return (Left error)
+  checkSettings (Left error)     _             = return (Left error)
   checkSettings _                (Left  error) = return (Left error)
   checkSettings (Right settings) (Right lobby) = do
     if (amtLives settings) < 1 || (amtLives settings) > 4
       then return (Left "You can only play with 1-4 lives!")
       else do
         if (amtHints settings) < 2 || (amtHints settings) > 10
-        then return (Left "You can only play with 2-10 hints!")
-        else return (Right lobby)
+          then return (Left "You can only play with 2-10 hints!")
+          else return (Right lobby)
 
   updateSettings
     :: Either String Settings
@@ -514,7 +522,8 @@ launchGame lobbyId = do
     (userObjects :: [Maybe User]) <- forM
       ((lobbyHost lobby) : (player lobby))
       findById
-    game <- createGame [ user | (Just user) <- userObjects ] (gameSettings lobby)
+    game <- createGame [ user | (Just user) <- userObjects ]
+                       (gameSettings lobby)
     let (Key _gid) = gid game
     let newLobby = lobby { launched = True, gameId = Just _gid }
     updateObject newLobby

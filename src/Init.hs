@@ -39,7 +39,9 @@ import           Handler.Auth                   ( loginHandle
                                                 )
 
 import           Handler.Lobby
+import           Handler.Chat
 import           Handler.Game
+
 import           Control.Monad.Trans.Reader     ( ReaderT
                                                 , ask
                                                 )
@@ -113,6 +115,10 @@ app = do
       post ("/lobby" <//> var <//> "kick" <//> var) $ kickPlayer
       get ("/lobby" <//> var <//> "status") $ getStatus
       post ("/lobby" <//> var <//> "launch") $ launchGame
+      
+      -- Chat Routes
+      post ("/chat/" <//> var <//> "send") $ handleSendMessage
+      get ("/chat/" <//> var <//> "status") $ getChatStatus
       post ("/lobby" <//> var <//> "settings") $ adjustSettings
       post ("/lobby" <//> var <//> "remove") $ removeLobby
       -- Game Routes

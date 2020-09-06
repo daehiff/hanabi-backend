@@ -69,6 +69,9 @@ errorKickPlayer = 7
 errorLaunch :: Int
 errorLaunch = 8
 
+errorChat :: Int
+errorChat = 16
+
 errorAdjustSettings :: Int
 errorAdjustSettings = 9
 
