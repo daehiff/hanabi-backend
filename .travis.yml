@@ -38,6 +38,7 @@ jobs:
         - DB_USER=""
         - DB_USE_REPLICA="false"
         - PORT="8080"
+        - JWT_SECRET="pssst!"
     - stage: "Deploy"
       before_deploy: |
         sh .travis/genDoc.sh

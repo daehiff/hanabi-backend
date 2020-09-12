@@ -67,11 +67,12 @@ An example for a configuration using your local environment is:
 
 ```bash
 export DB_ADDR="localhost"
-export DB_NAME="dev_test"
+export DB_NAME="tests"
 export DB_USE_REPLICA="false"
 export DB_USER=""
 export DB_PW=""
 export PORT="8080"
+export JWT_SECRET="psssst!"
 "
 
 ```
