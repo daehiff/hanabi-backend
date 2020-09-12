@@ -115,12 +115,12 @@ app = do
       post ("/lobby" <//> var <//> "kick" <//> var) $ kickPlayer
       get ("/lobby" <//> var <//> "status") $ getStatus
       post ("/lobby" <//> var <//> "launch") $ launchGame
+      post ("/lobby" <//> var <//> "settings") $ adjustSettings
+      post ("/lobby" <//> var <//> "remove") $ removeLobby
       
       -- Chat Routes
       post ("/chat/" <//> var <//> "send") $ handleSendMessage
       get ("/chat/" <//> var <//> "status") $ getChatStatus
-      post ("/lobby" <//> var <//> "settings") $ adjustSettings
-      post ("/lobby" <//> var <//> "remove") $ removeLobby
       -- Game Routes
       get ("game" <//> var <//> "status") $ getGameStatus
       post ("game" <//> var <//> "move") $ makeMove
