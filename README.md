@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/daehiff/hanabi-backend.svg?branch=master)](https://travis-ci.org/daehiff/hanabi-backend)
 
-# Hanabi Bckend
+# Hanabi Backend
 
 This is a Backend for playing Hanabi written in Haskell.
 
