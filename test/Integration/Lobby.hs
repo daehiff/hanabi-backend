@@ -28,9 +28,9 @@ import           Data.Aeson.Types        hiding ( String
                                                 , Key
                                                 )
 import           Integration.Utils              ( errorResponse
-                                                , sucessResponse,
-                                                customGet,
-                                                customPost
+                                                , sucessResponse
+                                                , customGet
+                                                , customPost
                                                 )
 import           Responses
 
@@ -118,20 +118,24 @@ createLobbyJSON public =
       )
 
 getLobbyFromResponse :: ByteString -> Either String Lobby
-getLobbyFromResponse bodyStr = parseBody
-  bodyStr
-  (\obj -> do
-    sucess <- (obj .: "success") :: Parser Object
-    lobby  <- (sucess .: "message") :: Parser Lobby
-    return lobby
-  )
+getLobbyFromResponse bodyStr =
+  let eLobby = parseBody
+        bodyStr
+        (\obj -> do
+          sucess <- (obj .: "success") :: Parser Object
+          lobby  <- (sucess .: "message") :: Parser Lobby
+          return lobby
+        )
+  in  case eLobby of
+        (Left  errorl) -> error (show errorl)
+        (Right lobby ) -> (Right lobby)
 
 
 lobbyTest = before_ flushDB $ do
   describe "POST /lobby/create" $ do
     it "can create a new public lobby" $ do -- TODO check lobbys/find and private creation
       let admin = defaultUsers !! 0
-      (admin, jwt) <- setupUser admin 
+      (admin, jwt) <- setupUser admin
       (customPost "/lobby/create" [("auth", jwt)] (createLobbyJSON True))
         `shouldRespondWith` 200
     it "can create a new private lobby" $ do
@@ -196,7 +200,8 @@ lobbyTest = before_ flushDB $ do
         `shouldRespondWith` errorResponse
                               400
                               errorJoinLobby
-                              ("Could not find Lobby with salt: stupid-salt" :: String)
+                              ("Could not find Lobby with salt: stupid-salt" :: String
+                              )
   describe "POST /lobby/:lobbyId/leave" $ do
     it "allows joined users to leave" $ do
       let admin = defaultUsers !! 0
@@ -243,7 +248,8 @@ lobbyTest = before_ flushDB $ do
         `shouldRespondWith` errorResponse
                               400
                               errorJoinLobby
-                              ("You did not join this lobby or you already left." :: String)
+                              ("You did not join this lobby or you already left." :: String
+                              )
   describe "POST /lobby/:lobbyId/kick/:userId" $ do
     it "kicks player and does not allow him to join" $ do
       let admin = defaultUsers !! 0
@@ -316,9 +322,10 @@ lobbyTest = before_ flushDB $ do
       customPost (packChars ("/lobby/" ++ lobbyId ++ "/launch"))
                  [("auth", user1jwt)]
                  ""
-        `shouldRespondWith` errorResponse 400
-                                          errorLaunch
-                                          ("You are not the Host of this lobby" :: String)
+        `shouldRespondWith` errorResponse
+                              400
+                              errorLaunch
+                              ("You are not the Host of this lobby" :: String)
     it "too few players" $ do
       let admin = defaultUsers !! 0
       (admin, adminjwt) <- setupUser admin
@@ -329,9 +336,10 @@ lobbyTest = before_ flushDB $ do
       customPost (packChars ("/lobby/" ++ lobbyId ++ "/launch"))
                  [("auth", adminjwt)]
                  ""
-        `shouldRespondWith` errorResponse 400
-                                          errorLaunch
-                                          ("To few player in the Lobby." :: String)
+        `shouldRespondWith` errorResponse
+                              400
+                              errorLaunch
+                              ("To few player in the Lobby." :: String)
     it "too many players" $ do
       let admin = defaultUsers !! 0
       (admin, adminjwt) <- setupUser admin
@@ -350,26 +358,27 @@ lobbyTest = before_ flushDB $ do
       let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
       let (Key lobbyId) = lid lobby
       customPost (packChars ("/lobby/join/" ++ salt lobby))
-                [("auth", user1jwt)]
-                ""
+                 [("auth", user1jwt)]
+                 ""
       customPost (packChars ("/lobby/join/" ++ salt lobby))
-                [("auth", user2jwt)]
-                ""
+                 [("auth", user2jwt)]
+                 ""
       customPost (packChars ("/lobby/join/" ++ salt lobby))
-                [("auth", user3jwt)]
-                ""
+                 [("auth", user3jwt)]
+                 ""
       customPost (packChars ("/lobby/join/" ++ salt lobby))
-                [("auth", user4jwt)]
-                ""
+                 [("auth", user4jwt)]
+                 ""
       customPost (packChars ("/lobby/join/" ++ salt lobby))
-                [("auth", user5jwt)]
-                ""
+                 [("auth", user5jwt)]
+                 ""
       customPost (packChars ("/lobby/" ++ lobbyId ++ "/launch"))
-                [("auth", adminjwt)]
-                ""
-        `shouldRespondWith` errorResponse 400
-                                          errorLaunch
-                                          ("To many players in the Lobby." :: String)
+                 [("auth", adminjwt)]
+                 ""
+        `shouldRespondWith` errorResponse
+                              400
+                              errorLaunch
+                              ("To many players in the Lobby." :: String)
     it "someone tries to join the lobby, after the game was launched" $ do
       let admin = defaultUsers !! 0
       (admin, adminjwt) <- setupUser admin
@@ -382,14 +391,14 @@ lobbyTest = before_ flushDB $ do
       let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
       let (Key lobbyId) = lid lobby
       customPost (packChars ("/lobby/join/" ++ salt lobby))
-                [("auth", user1jwt)]
-                ""
+                 [("auth", user1jwt)]
+                 ""
       customPost (packChars ("/lobby/" ++ lobbyId ++ "/launch"))
-                [("auth", adminjwt)]
-                ""
+                 [("auth", adminjwt)]
+                 ""
       customPost (packChars ("/lobby/join/" ++ salt lobby))
-                [("auth", user2jwt)]
-                ""
+                 [("auth", user2jwt)]
+                 ""
         `shouldRespondWith` errorResponse 400
                                           errorJoinLobby
                                           ("Game already started!" :: String)
@@ -403,14 +412,14 @@ lobbyTest = before_ flushDB $ do
       let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
       let (Key lobbyId) = lid lobby
       customPost (packChars ("/lobby/join/" ++ salt lobby))
-                [("auth", user1jwt)]
-                ""
+                 [("auth", user1jwt)]
+                 ""
       customPost (packChars ("/lobby/" ++ lobbyId ++ "/launch"))
-                [("auth", adminjwt)]
-                ""
+                 [("auth", adminjwt)]
+                 ""
       customPost (packChars ("/lobby/" ++ lobbyId ++ "/leave"))
-                [("auth", user1jwt)]
-                ""
+                 [("auth", user1jwt)]
+                 ""
         `shouldRespondWith` errorResponse 400
                                           errorJoinLobby
                                           ("Game already started!" :: String)
@@ -425,11 +434,11 @@ lobbyTest = before_ flushDB $ do
       let (Key _id)     = uid user1
       let (Key lobbyId) = lid lobby
       customPost (packChars ("/lobby/join/" ++ salt lobby))
-                [("auth", user1jwt)]
-                ""
+                 [("auth", user1jwt)]
+                 ""
       customPost (packChars ("/lobby/" ++ lobbyId ++ "/launch"))
-                [("auth", adminjwt)]
-                ""
+                 [("auth", adminjwt)]
+                 ""
       customPost (packChars ("/lobby/" ++ lobbyId ++ "/kick/" ++ _id))
                  [("auth", adminjwt)]
                  ""
@@ -454,7 +463,9 @@ lobbyTest = before_ flushDB $ do
       customPost (packChars ("/lobby/" ++ lobbyId ++ "/launch"))
                  [("auth", adminjwt)]
                  ""
-        `shouldRespondWith` errorResponse 400 errorLaunch ("Game already started!" :: String)
+        `shouldRespondWith` errorResponse 400
+                                          errorLaunch
+                                          ("Game already started!" :: String)
 
   describe "POST /lobby/:lobbyId/settings" $ do
     it "successfully change the settings" $ do
@@ -466,13 +477,19 @@ lobbyTest = before_ flushDB $ do
         (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
       let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
       let (Key lobbyId) = lid lobby
-      let newSettings = Settings {amtLives = 1,
-                          amtHints = 10,
-                          level = Easy,
-                          isRainbow = False}
-      (customPost (packChars ("/lobby/"++ lobbyId ++ "/settings")) [("auth", adminjwt)] 
-                  (encode $ (object ["settings" .= newSettings])))
-          `shouldRespondWith` sucessResponse 200 sucessCode (lobby {gameSettings = newSettings })
+      let newSettings = Settings { amtLives  = 1
+                                 , amtHints  = 10
+                                 , level     = Easy
+                                 , isRainbow = False
+                                 }
+      (customPost (packChars ("/lobby/" ++ lobbyId ++ "/settings"))
+                  [("auth", adminjwt)]
+                  (encode $ (object ["settings" .= newSettings]))
+        )
+        `shouldRespondWith` sucessResponse
+                              200
+                              sucessCode
+                              (lobby { gameSettings = newSettings })
 
     it "too few lives" $ do
       let admin = defaultUsers !! 0
@@ -483,19 +500,25 @@ lobbyTest = before_ flushDB $ do
         (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
       let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
       let (Key lobbyId) = lid lobby
-      (customPost (packChars ("/lobby/"++ lobbyId ++ "/settings")) [("auth", adminjwt)] 
-                  (encode
-                     $ (object
-                        [
-                          "settings" .= Settings {
-                                          amtLives = 0,
-                                          amtHints = 10,
-                                          level = Easy,
-                                          isRainbow = False
-                          }
-                        ])))
-          `shouldRespondWith` errorResponse 400 errorAdjustSettings ("You can only play with 1-4 lives!" :: String)
-    
+      (customPost
+          (packChars ("/lobby/" ++ lobbyId ++ "/settings"))
+          [("auth", adminjwt)]
+          ( encode
+          $ (object
+              [ "settings" .= Settings { amtLives  = 0
+                                       , amtHints  = 10
+                                       , level     = Easy
+                                       , isRainbow = False
+                                       }
+              ]
+            )
+          )
+        )
+        `shouldRespondWith` errorResponse
+                              400
+                              errorAdjustSettings
+                              ("You can only play with 1-4 lives!" :: String)
+
     it "too many lives" $ do
       let admin = defaultUsers !! 0
       (admin, adminjwt) <- setupUser admin
@@ -505,18 +528,24 @@ lobbyTest = before_ flushDB $ do
         (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
       let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
       let (Key lobbyId) = lid lobby
-      (customPost (packChars ("/lobby/"++ lobbyId ++ "/settings")) [("auth", adminjwt)] 
-                  (encode
-                     $ (object
-                        [
-                          "settings" .= Settings {
-                                          amtLives = 5,
-                                          amtHints = 10,
-                                          level = Easy,
-                                          isRainbow = False
-                          }
-                        ])))
-          `shouldRespondWith` errorResponse 400 errorAdjustSettings ("You can only play with 1-4 lives!" :: String)
+      (customPost
+          (packChars ("/lobby/" ++ lobbyId ++ "/settings"))
+          [("auth", adminjwt)]
+          ( encode
+          $ (object
+              [ "settings" .= Settings { amtLives  = 5
+                                       , amtHints  = 10
+                                       , level     = Easy
+                                       , isRainbow = False
+                                       }
+              ]
+            )
+          )
+        )
+        `shouldRespondWith` errorResponse
+                              400
+                              errorAdjustSettings
+                              ("You can only play with 1-4 lives!" :: String)
 
     it "too few hints" $ do
       let admin = defaultUsers !! 0
@@ -527,18 +556,24 @@ lobbyTest = before_ flushDB $ do
         (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
       let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
       let (Key lobbyId) = lid lobby
-      (customPost (packChars ("/lobby/"++ lobbyId ++ "/settings")) [("auth", adminjwt)] 
-                  (encode
-                     $ (object
-                        [
-                          "settings" .= Settings {
-                                          amtLives = 3,
-                                          amtHints = 1,
-                                          level = Hard,
-                                          isRainbow = True
-                          }
-                        ])))
-          `shouldRespondWith` errorResponse 400 errorAdjustSettings ("You can only play with 2-10 hints!" :: String)
+      (customPost
+          (packChars ("/lobby/" ++ lobbyId ++ "/settings"))
+          [("auth", adminjwt)]
+          ( encode
+          $ (object
+              [ "settings" .= Settings { amtLives  = 3
+                                       , amtHints  = 1
+                                       , level     = Hard
+                                       , isRainbow = True
+                                       }
+              ]
+            )
+          )
+        )
+        `shouldRespondWith` errorResponse
+                              400
+                              errorAdjustSettings
+                              ("You can only play with 2-10 hints!" :: String)
     it "too many hints" $ do
       let admin = defaultUsers !! 0
       (admin, adminjwt) <- setupUser admin
@@ -548,18 +583,24 @@ lobbyTest = before_ flushDB $ do
         (customPost "/lobby/create" [("auth", adminjwt)] (createLobbyJSON True))
       let (Right lobby) = getLobbyFromResponse (simpleBody requestCL)
       let (Key lobbyId) = lid lobby
-      (customPost (packChars ("/lobby/"++ lobbyId ++ "/settings")) [("auth", adminjwt)] 
-                  (encode
-                     $ (object
-                        [
-                          "settings" .= Settings {
-                                          amtLives = 3,
-                                          amtHints = 11,
-                                          level = Hard,
-                                          isRainbow = True
-                          }
-                        ])))
-          `shouldRespondWith` errorResponse 400 errorAdjustSettings ("You can only play with 2-10 hints!" :: String)
+      (customPost
+          (packChars ("/lobby/" ++ lobbyId ++ "/settings"))
+          [("auth", adminjwt)]
+          ( encode
+          $ (object
+              [ "settings" .= Settings { amtLives  = 3
+                                       , amtHints  = 11
+                                       , level     = Hard
+                                       , isRainbow = True
+                                       }
+              ]
+            )
+          )
+        )
+        `shouldRespondWith` errorResponse
+                              400
+                              errorAdjustSettings
+                              ("You can only play with 2-10 hints!" :: String)
 
 
 
