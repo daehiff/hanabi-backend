@@ -29,6 +29,7 @@ import           Data.Pool                      ( withResource
                                                 , createPool
                                                 , Pool
                                                 )
+
 import           Control.Monad.Trans.Reader     ( ReaderT
                                                 , ask
                                                 )
@@ -36,6 +37,7 @@ import           Control.Monad.Trans
 import           Responses                      ( AppStateM
                                                 , DBConf(..)
                                                 , AppConfig(..)
+                                                , AppHandle
                                                 )
 ------------------------------------------------------------------
 import           Text.Read                      ( readMaybe )
@@ -104,7 +106,10 @@ runDB act = do
 
 
 
-class (ToBSON a, FromBSON a) => MongoObject a where {-MUST DEFINE: insertId, collection (where the UID of the object is, whats the collection of the object-}
+class (ToBSON a, FromBSON a) => MongoObject a where
+  {-
+  MUST DEFINE: insertId, collection (where the UID of the object is, whats the collection of the object
+  -}
   insertId:: Show x => x -> a -> a
 
   collection:: a -> Collection
@@ -118,7 +123,7 @@ class (ToBSON a, FromBSON a) => MongoObject a where {-MUST DEFINE: insertId, col
 
   {- 
   Insert a new (!) Mongo Object into the database 
-  This will rais an error in case a object with an existing id will be inserted
+  This will raise an error in case a object with an existing id will be inserted
   -}
   insertObject :: (MonadTrans t, MonadIO (t (AppStateM sess)))
     => a
@@ -132,23 +137,21 @@ class (ToBSON a, FromBSON a) => MongoObject a where {-MUST DEFINE: insertId, col
   
   Note: it is assumed, that the object in the database is already known (so this does not generate a id)
   -}
-  updateObject :: (MonadTrans t, MonadIO (t (AppStateM sess)))
-    => a
-    -> t (AppStateM sess) ()
+  updateObject :: (MonadTrans t, MonadIO (t (AppStateM sess))) => a -> t (AppStateM sess) ()
   updateObject object = do
     runDB $ save (collection (undefined::a)) (serialize object)
 
   {-
   Find a certaint object by its _id 
   E.g:
-  findById "5ed69725c3b5a031cb000000" :: IO (Maybe Card)
+  (card :: Maybe Card) <- findById "5ed69725c3b5a031cb000000"
   <=>
   db.getCollection('cards').find({"_id": ObjectId("5ed69725c3b5a031cb000000")})
   
   Note: that in order to find the correct object, a typecast is necessary
   -}
   findById:: (MonadTrans t, MonadIO (t (AppStateM sess))) => String -> t (AppStateM sess) (Maybe a)
-  findById id =    
+  findById id =
     let mobjId = readMaybe id :: Maybe ObjectId
     in
       findObject [T.pack ("_id") =: val mobjId]
@@ -156,7 +159,7 @@ class (ToBSON a, FromBSON a) => MongoObject a where {-MUST DEFINE: insertId, col
   {- 
   Find a certaint object by a custom selector:
   E.g: 
-  (findObject [T.pack ("color") =: Red])::IO (Maybe Card) 
+  (card :: Maybe Card) <- (findObject [T.pack ("color") =: Red])
   <=> 
   db.getCollection('cards').findOne({"color": "Red"}) 
   
@@ -173,12 +176,12 @@ class (ToBSON a, FromBSON a) => MongoObject a where {-MUST DEFINE: insertId, col
   {-
   This method finds all objects matching the selector and can be presorted by the sorter (both BSON objects)
   E.g: 
-  (findObject [T.pack ("color") =: Red] [])::IO ([Maybe Card]) 
+  (cards :: Maybe [Card]) <- (findObject [T.pack ("color") =: Red] [])
   <=> 
   db.getCollection('cards').find({"color": "Red"})
   
   Your can presort elements by certain values, by defining a sort object
-  findObjects [] ["number" := val 1])::IO ([Maybe Card]
+  (cards :: Maybe [Card]) <- findObjects [] ["number" := val 1])
   <=>
   db.getCollection('cards').find({}).sort({"number": 1})
 
@@ -193,13 +196,17 @@ class (ToBSON a, FromBSON a) => MongoObject a where {-MUST DEFINE: insertId, col
       let docs = (map deserialize docs_raw):: [Maybe a]
       return docs
 
-  
 
+{- 
+  Removes an Object by its unique _id. 
+  
+  Returns the object, when its removed from the Database and nothing in case the object does not exists
+ -}
   removeObjectById::(MonadTrans t, MonadIO (t (AppStateM sess))) => String -> t (AppStateM sess) (Maybe a)
-  removeObjectById _id = let mobjId = readMaybe _id :: Maybe ObjectId in 
+  removeObjectById _id = let mobjId = readMaybe _id :: Maybe ObjectId in
     do
       el <- findById _id
       runDB $ delete $ select [T.pack "_id" := val mobjId] (collection (undefined::a))
       return el
 
- 
+

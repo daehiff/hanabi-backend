@@ -61,16 +61,16 @@ data SAP = SAP { user::User, sessionid::String, ttl::Integer}
                  deriving(Show, Eq, Generic, ToJSON, FromJSON)
 
 
-{- Helper to get curren timestamp in MS -}
 _getNow :: IO Integer
 _getNow = (round . (* 1000)) <$> getPOSIXTime
 
 {-
 Base Hook returns HNil for initalisation
+Here we also set cors headers required for Frontend
 -}
 initHook :: ActionCtxT () (WebStateM Pipe () AppConfig) (HVect '[])
 initHook = do
-  setHeader "Access-Control-Allow-Origin" "*"
+  setHeader "Access-Control-Allow-Origin"   "*"
   setHeader "Access-Control-Expose-Headers" "auth"
   return HNil
 
@@ -97,8 +97,7 @@ updateJWTHook = do
   return oldCtx
 
 
-sessionToJWT
-  :: (HasSpock m, MonadIO m, SpockState m ~ AppConfig) => SAP -> m T.Text
+sessionToJWT :: SAP -> AppHandle (HVect xs) T.Text
 sessionToJWT payload = do
   jwtSecret <-
     getState
@@ -125,6 +124,8 @@ authHook = do
       json $ errorJson authError errorMsg
     (Right payload) -> return (user payload :&: payload :&: oldCtx)
  where
+  getRawPayload
+    :: Maybe (T.Text) -> AppHandle (HVect xs) (Either String ByteString)
   getRawPayload Nothing    = return (Left "Header: `auth` is missing")
   getRawPayload (Just jwt) = do
     jwtSecret <-
@@ -137,7 +138,9 @@ authHook = do
       (Left error) -> return (Left ("Unable to parse JWT: " ++ show error))
       (Right (_, payload)) -> return (Right payload)
 
-  --convertPayloadToSAP :: Either String ByteString -> IO (Either String SAP)
+
+  convertPayloadToSAP
+    :: (Monad m) => Either String ByteString -> m (Either String SAP)
   convertPayloadToSAP (Left  error     ) = return (Left error)
   convertPayloadToSAP (Right rawPayload) = do
     let payload = (decode (fromStrict rawPayload)) :: Maybe SAP
@@ -168,3 +171,6 @@ authHook = do
 
   isValidTTL :: Integer -> Integer -> Bool
   isValidTTL now ttl = (now - ttl) < 0
+
+
+

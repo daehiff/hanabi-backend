@@ -27,8 +27,8 @@ import           Data.Time.Clock
 import           Model                          ( User(..)
                                                 , Lobby(..)
                                                 , Chat(..)
-                                                , Settings(..),
-                                                Game(..)
+                                                , Settings(..)
+                                                , Game(..)
                                                 )
 import           Model.Utils
 import           Control.Monad.Trans
@@ -251,20 +251,24 @@ leaveLobby lobbyId = do
       json $ errorJson errorJoinLobby error
     (Right lobby) -> json $ sucessJson sucessCode lobby
  where
+  isHost
+    :: User -> Either String Lobby -> AppHandle (HVect xs) (Either String Lobby)
   isHost _ (Left error) = return (Left error)
   isHost user (Right lobby) =
     let (Key _id) = uid user
     in  if _id == lobbyHost lobby
           then (return (Left "You as a host cannot leave your lobby."))
           else (return (Right lobby))
-
+  checkPlayerIsInLobby
+    :: User -> Either String Lobby -> AppHandle (HVect xs) (Either String Lobby)
   checkPlayerIsInLobby _ (Left error) = return (Left error)
   checkPlayerIsInLobby user (Right lobby) =
     let (Key _id) = uid user
     in  if not $ _id `elem` player lobby
           then return (Left "You did not join this lobby or you already left.")
           else return (Right lobby)
-
+  updateLobby
+    :: User -> Either String Lobby -> AppHandle (HVect xs) (Either String Lobby)
   updateLobby _    (Left  error) = return (Left error)
   updateLobby user (Right lobby) = do
     let (Key _id) = uid user
@@ -363,6 +367,8 @@ removeLobby lobbyId = do
           ("Lobby doesn't exist, so no removing!" :: String)
         (Just _lobby) -> json $ sucessJson sucessCode _lobby
  where
+  isHost
+    :: User -> Either String Lobby -> AppHandle (HVect xs) (Either String Lobby)
   isHost _ (Left error) = return (Left error)
   isHost user (Right lobby) =
     let (Key _id) = uid user
@@ -473,6 +479,7 @@ getStatus lobbyId = do
       json $ errorJson errorJoinLobby error
     (Right lobby) -> json $ sucessJson sucessCode lobby
  where
+  isInLobby:: String -> Either String Lobby -> AppHandle (HVect xs) (Either String Lobby)
   isInLobby _      (Left  error) = return (Left error)
   isInLobby userId (Right lobby) = do
     if not $ userId `elem` ((lobbyHost lobby) : (player lobby))
@@ -506,7 +513,7 @@ launchGame lobbyId = do
     (Right lobby) -> do
       json $ sucessJson sucessCode lobby
  where
-  --areEnoughPlayer :: Either String Lobby -> IO (Either String Lobby)
+  areEnoughPlayer :: Either String Lobby -> AppHandle (HVect xs) (Either String Lobby)
   areEnoughPlayer (Left  error) = return (Left error)
   areEnoughPlayer (Right lobby) = do
     if (length ((lobbyHost lobby) : player lobby)) < 2
@@ -528,8 +535,8 @@ launchGame lobbyId = do
     let newLobby = lobby { launched = True, gameId = Just _gid }
     updateObject newLobby
     return (Right newLobby)
-
-  isHost _      (Left  error) = return (Left error) -- TODO REFACTOR THIS
+  isHost:: String -> Either String Lobby -> AppHandle (HVect xs) (Either String Lobby)
+  isHost _      (Left  error) = return (Left error)
   isHost hostId (Right lobby) = do
     if not $ hostId == (lobbyHost lobby)
       then return (Left "You are not the Host of this lobby")

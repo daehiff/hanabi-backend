@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
 
-module Controller.Lobby where -- no control
+module Controller.Lobby where
 
 import           Model
 import           Model.Utils
