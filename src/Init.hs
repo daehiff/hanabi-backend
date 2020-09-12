@@ -69,8 +69,9 @@ createConfig = do
                       , useReplica = useReplica
                       , dbName     = dbName
                       }
-  port <- read <$> getEnv "PORT"
-  return AppConfig { dbConf = dbConf, port = port, jwtSecret = "test" }
+  port      <- read <$> getEnv "PORT"
+  jwtSecret <- getEnv "JWT_SECRET"
+  return AppConfig { dbConf = dbConf, port = port, jwtSecret = jwtSecret }
 
 
 runApp :: IO ()
@@ -85,14 +86,14 @@ runApp = do
   CORS Haaders on Preflight Requests
  -}
 corsHeader :: AppHandle () ()
-corsHeader =
-  do ctx <- getContext
-     setHeader "Access-Control-Allow-Origin" "*"
-     setHeader "Access-Control-Allow-Methods" "POST, GET, OPTIONS, DELETE"
-     setHeader "Access-Control-Allow-Headers" "Content-Type, auth"
-     setHeader "Access-Control-Max-Age" "86400"
-     setStatus status204
-     pure ctx
+corsHeader = do
+  ctx <- getContext
+  setHeader "Access-Control-Allow-Origin"  "*"
+  setHeader "Access-Control-Allow-Methods" "POST, GET, OPTIONS, DELETE"
+  setHeader "Access-Control-Allow-Headers" "Content-Type, auth"
+  setHeader "Access-Control-Max-Age"       "86400"
+  setStatus status204
+  pure ctx
 
 
 app :: App ()
@@ -119,14 +120,14 @@ app = do
       post ("/lobby" <//> var <//> "launch") $ launchGame
       post ("/lobby" <//> var <//> "settings") $ adjustSettings
       post ("/lobby" <//> var <//> "remove") $ removeLobby
-      
+
       -- Chat Routes
       post ("/chat/" <//> var <//> "send") $ handleSendMessage
       get ("/chat/" <//> var <//> "status") $ getChatStatus
       -- Game Routes
       get ("game" <//> var <//> "status") $ getGameStatus
       post ("game" <//> var <//> "move") $ makeMove
-      get("game"<//> var <//> "cards") $ getCards
+      get ("game" <//> var <//> "cards") $ getCards
       get ("game" <//> var <//> "ownCards") $ getOwnCards
       -- User Route
       get ("user" <//> var) $ getUserHandle
