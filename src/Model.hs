@@ -3,7 +3,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
--- TODO (DuplicateRecordFields)
 module Model where
 
 import           Data.Aeson                     ( ToJSON(..)
