@@ -30,8 +30,7 @@ import           Model                          ( User(..)
                                                 )
 import           Model.Utils
 import           Control.Monad.Trans
-import           Controller.Chat               ( findChatById
-                                                )
+import           Controller.Chat                ( findChatById )
 import           Controller.Utils               ( parseBody )
 import           Data.ByteString.Lazy           ( fromStrict
                                                 , toStrict
@@ -120,7 +119,7 @@ findUpdateChat _chatID (Right message) = do
 
 
 {-
-@api {get} {{base_url}}/chat/status Send message 
+@api {get} {{base_url}}/chat/status Get status 
 @apiName status
 @apiGroup Chat
 @apiHeader {String} auth Users auth Token.
@@ -146,4 +145,4 @@ getChatStatus chatId = do
   eChat <- findChatById chatId
   case eChat of
     (Left  error) -> json $ errorJson errorChat error
-    (Right chat) -> json $ sucessJson sucessCode chat
+    (Right chat ) -> json $ sucessJson sucessCode chat

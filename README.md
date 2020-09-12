@@ -15,7 +15,7 @@ docker pull mongo:4.0.4
 ```
 To run it:
 ```bash
-docker run -d -p 27017-27019:27017-27019 -n mongodb mongo:4.0.4
+docker run -d -p 27017-27019:27017-27019 mongo:4.0.4
 ```
 In case you are using vsc, there is a fancy docker extension which allows you to restart and manage your containers
 (https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-docker)
@@ -62,11 +62,12 @@ To create documentation, use `make doc`
 
 ## ENVIROMENT
 
-The backend needs to be configured, by a .env file before running create a file `.env`:
+The backend needs to be configured, by a .env file before running create a file `.env`.
+An example for a configuration using your local environment is: 
 
 ```bash
 export DB_ADDR="localhost"
-export DB_NAME="dev"
+export DB_NAME="dev_test"
 export DB_USE_REPLICA="false"
 export DB_USER=""
 export DB_PW=""
