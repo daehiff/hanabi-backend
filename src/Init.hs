@@ -81,7 +81,9 @@ runApp = do
   spockCfg <- defaultSpockCfg () (PCPool pool) config
   runSpock (port config) (spock spockCfg app)
 
-
+{- 
+  CORS Haaders on Preflight Requests
+ -}
 corsHeader :: AppHandle () ()
 corsHeader =
   do ctx <- getContext

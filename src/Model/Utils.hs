@@ -137,7 +137,7 @@ class (ToBSON a, FromBSON a) => MongoObject a where
   
   Note: it is assumed, that the object in the database is already known (so this does not generate a id)
   -}
-  updateObject :: (MonadTrans t, MonadIO (t (AppStateM sess))) => a -> t (AppStateM sess) () 
+  updateObject :: (MonadTrans t, MonadIO (t (AppStateM sess))) => a -> t (AppStateM sess) ()
   updateObject object = do
     runDB $ save (collection (undefined::a)) (serialize object)
 

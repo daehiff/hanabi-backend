@@ -95,7 +95,7 @@ data Lobby = Lobby {lid:: ObjectKey,
                     lobbyChatID:: String,
                     gameSettings :: Settings}
                     deriving (Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
-                    
+
 instance MongoObject Lobby where
   collection _ = "lobbys"
 
@@ -166,7 +166,7 @@ data MoveAction = HintAction {targetPlayer::String, hint::Either Color Int}
                   | DiscardAction { cardId:: String}
                   deriving (FromJSON, ToJSON, Show, Generic, Eq)
 
-data Message = Message {message:: String, timestamp:: UTCTime, sender:: String}  
+data Message = Message {message:: String, timestamp:: UTCTime, sender:: String}
                 deriving (Show, Generic, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
 
 data Chat = Chat{chatID:: ObjectKey, messages:: [Message]}
@@ -175,4 +175,4 @@ data Chat = Chat{chatID:: ObjectKey, messages:: [Message]}
 instance MongoObject Chat where
   collection _ = "chat"
 
-  insertId id chat = chat { chatID = Key (show id)}
+  insertId id chat = chat { chatID = Key (show id) }
