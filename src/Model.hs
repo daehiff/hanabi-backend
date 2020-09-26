@@ -25,12 +25,13 @@ import           Model.Utils                    ( MongoObject(..)
                                                 , ToBSON(..)
                                                 )
 import           Data.Time.Clock
+
+
 data Color = Red | Blue | White | Yellow | Green | Rainbow
             deriving(Generic, Show, Eq , ToJSON, FromJSON, ToBSON, FromBSON)
 
 
 data Card = Card {cid::ObjectKey , color::Color, number::Int, hintColor::[Color], hintNumber:: Maybe Int}
-
               deriving(Generic, Show, Eq, ToJSON, FromJSON, ToBSON, FromBSON)
 
 instance MongoObject Card where

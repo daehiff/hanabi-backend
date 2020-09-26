@@ -227,3 +227,21 @@ getUser = do
   let user :: User = (findFirst oldCtx)
   let (Key _uid)   = uid user
   json $ sucessJson sucessCode user
+
+getOtherUser :: String -> AppHandle (HVect xs) ()
+getOtherUser id = do
+  (mUser :: Maybe User) <- (findById id)
+  let eUser = parseUser mUser
+  case eUser of
+    (Left error) -> do
+      setStatus badRequest400
+      json (errorJson userNotFoundError error)
+    (Right user) -> do
+      json (sucessJson sucessCode user)
+ where
+
+parseUser :: Maybe User -> (Either String User)
+parseUser Nothing = (Left "User does not exist")
+parseUser (Just user) = let nUser = user { sessions = [] } in (Right nUser)
+
+
